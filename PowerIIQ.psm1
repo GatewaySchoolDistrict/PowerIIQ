@@ -193,113 +193,22 @@ function Get-IIQTicket{
         }
         foreach($guid in $AssetID){
             $filters+=New-IIQFacetObject -Facet asset -Id $guid
-            <#
-            $filters+=@{
-                "Facet"="asset"
-                "Name"=""
-                "Id"="$guid"
-                "Value"=""
-                "Negative"=$false
-                "SortOrder"=""
-                "Selected"=$true
-                "IsUnassigned"=$false
-                "GroupIndex"=0
-                "FacetName"=""
-            }
-            #>
         }
         foreach($item in $State){
             if ($item -eq "Open"){$guid="00000000-0000-0000-0000-000000000000"}
             if ($item -eq "Closed"){$guid="11111111-1111-1111-1111-111111111111"}
             $filters+=New-IIQFacetObject -Facet ticketstate -Name $item -Id $guid
-            <#
-            $filters+=@{
-                "Facet"="ticketstate"
-                "Name"=$item
-                "Id"=$guid
-                "Value"="1" #1 for closed 0 for open but does not seem to function
-                "Negative"=$false
-                "SortOrder"=""
-                "Selected"=$true
-                "IsUnassigned"=$false
-                "GroupIndex"=0
-            }
-            #>
         }     
         foreach($item in $TicketNumber){
             $filters+=New-IIQFacetObject -Facet ticketnumber -Value $item
-            <#
-            $filters+=@{
-                "Facet"="ticketnumber"
-                "Name"=""
-                "Id"=""
-                "Value"="$item"
-                "Negative"=$false
-                "SortOrder"=""
-                "Selected"=$true
-                "IsUnassigned"=$false
-                "GroupIndex"=0
-            }
-            #>
         }
         foreach($item in $Tag){
             Get-IIQTag -Tag $item | ForEach-Object{
                 if ($_ -eq $null) {continue}
                 $TagID+=$_.Id
                 $filters+=New-IIQFacetObject -Facet tag -Id $TagID
-                <#
-                $filters+=@{
-                    "Facet"="tag"
-                    "Name"=$item
-                    "Id"=$TagID
-                    "Value"=""
-                    "Negative"=$false
-                    "SortOrder"=""
-                    "Selected"=$true
-                    "IsUnassigned"=$false
-                    "GroupIndex"=0
-                }
-                #>
             }
         }
-
-
-        <# Obsolete Asset Searches
-        foreach($item in $AssetSerialNumber){
-            Get-IIQAsset -SerialNumber $item | ForEach-Object{
-                if ($_ -eq $null) {continue}
-                $AssetID=$_.AssetId
-                $filters+=@{
-                    "Facet"="assetserialnumber"
-                    "Name"=$item
-                    "Id"="$AssetID"
-                    "Value"=""
-                    "Negative"=$false
-                    "SortOrder"=""
-                    "Selected"=$true
-                    "IsUnassigned"=$false
-                    "GroupIndex"=0
-                }
-            }
-        }
-        foreach($item in $AssetTag){
-            Get-IIQAsset -AssetTag $item | ForEach-Object {
-                if ($_ -eq $null) {continue}
-                $AssetID=$_.AssetId
-                $filters+=@{
-                    "Facet"="assettag"
-                    "Name"=$item
-                    "Id"="$AssetID"
-                    "Value"=""
-                    "Negative"=$false
-                    "SortOrder"=""
-                    "Selected"=$true
-                    "IsUnassigned"=$false
-                    "GroupIndex"=0
-                }
-            }
-        }
-        #>
 
         if($filters.Length -eq 0 -and $All -ne $true){return}
         $Parameters=@{
