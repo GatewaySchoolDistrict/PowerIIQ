@@ -192,6 +192,8 @@ function Get-IIQTicket{
             }
         }
         foreach($guid in $AssetID){
+            $filters+=New-IIQFacetObject -Facet asset -Id $guid
+            <#
             $filters+=@{
                 "Facet"="asset"
                 "Name"=""
@@ -204,10 +206,13 @@ function Get-IIQTicket{
                 "GroupIndex"=0
                 "FacetName"=""
             }
+            #>
         }
         foreach($item in $State){
             if ($item -eq "Open"){$guid="00000000-0000-0000-0000-000000000000"}
             if ($item -eq "Closed"){$guid="11111111-1111-1111-1111-111111111111"}
+            $filters+=New-IIQFacetObject -Facet ticketstate -Name $item -Id $guid
+            <#
             $filters+=@{
                 "Facet"="ticketstate"
                 "Name"=$item
@@ -219,8 +224,11 @@ function Get-IIQTicket{
                 "IsUnassigned"=$false
                 "GroupIndex"=0
             }
+            #>
         }     
         foreach($item in $TicketNumber){
+            $filters+=New-IIQFacetObject -Facet ticketnumber -Value $item
+            <#
             $filters+=@{
                 "Facet"="ticketnumber"
                 "Name"=""
@@ -232,11 +240,14 @@ function Get-IIQTicket{
                 "IsUnassigned"=$false
                 "GroupIndex"=0
             }
+            #>
         }
         foreach($item in $Tag){
             Get-IIQTag -Tag $item | ForEach-Object{
                 if ($_ -eq $null) {continue}
                 $TagID+=$_.Id
+                $filters+=New-IIQFacetObject -Facet tag -Id $TagID
+                <#
                 $filters+=@{
                     "Facet"="tag"
                     "Name"=$item
@@ -248,6 +259,7 @@ function Get-IIQTicket{
                     "IsUnassigned"=$false
                     "GroupIndex"=0
                 }
+                #>
             }
         }
 
@@ -337,8 +349,6 @@ function Get-IIQAsset{
     }
 }
 
-
-
 function Get-IIQTag {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
@@ -364,7 +374,7 @@ function Get-IIQTag {
             }
         
             switch ($PSCmdlet.ParameterSetName) {
-                "TagID" { Get-IIQObject "/assets/$AssetID" }
+                "TagID" { Get-IIQObject "/assets/$TagID" }
                 "Tag" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
                 Default { throw "No Parameter set defined" }
             }
@@ -375,7 +385,53 @@ function Get-IIQTag {
     }
 }
 
+function Get-IIQUser {
+    [cmdletbinding()]
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = "UserID")]
+        [guid[]]$UserID,
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Search")]
+        [string[]]$Search,
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Username")]
+        [string[]]$Username
+    )
+        
+    switch ($PSCmdlet.ParameterSetName) {
+        "UserID" { Get-IIQObject "/users/$UserID" }
+        "Search" { Get-IIQObject -Method POST "/search" -data "{""Query"":""$Search"",""Facets"":4,""Limit"":20}" }
+        #"Username" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
+        Default { throw "No Parameter set defined" }
+    }
+}
 
+function New-IIQFacetObject {
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Facet,
+        [string]$Name="",
+        [guid]$Id,
+        [string]$Value,
+        [bool]$Negative=$false,
+        [string]$SortOrder="",
+        [bool]$Selected=$true,
+        [bool]$IsUnassigned=$false,
+        [uint]$GroupIndex=0
+    )
+    $FacetObject=@{
+        "Facet"=$Facet
+        "Name"=$Name
+        "Id"=$Id
+        "Value"=$Value
+        "Negative"=$Negative
+        "SortOrder"=$SortOrder
+        "Selected"=$Selected
+        "IsUnassigned"=$IsUnassigned
+        "GroupIndex"=$GroupIndex
+    }
+    return $FacetObject
+}
 
 
 
@@ -385,5 +441,6 @@ Export-ModuleMember -Function Get-IIQObject
 Export-ModuleMember -Function Get-IIQTicket
 Export-ModuleMember -Function Get-IIQAsset
 Export-ModuleMember -Function Get-IIQTag
+Export-ModuleMember -Function Get-IIQUser
 Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
