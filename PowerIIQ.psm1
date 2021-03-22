@@ -166,6 +166,9 @@ function Get-IIQTicket{
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
         [uint[]]$TicketNumber,
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Tag,
+        [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
         [switch]$All
     )
 
@@ -230,6 +233,25 @@ function Get-IIQTicket{
                 "GroupIndex"=0
             }
         }
+        foreach($item in $Tag){
+            Get-IIQTag -Tag $item | ForEach-Object{
+                if ($_ -eq $null) {continue}
+                $TagID+=$_.Id
+                $filters+=@{
+                    "Facet"="tag"
+                    "Name"=$item
+                    "Id"=$TagID
+                    "Value"=""
+                    "Negative"=$false
+                    "SortOrder"=""
+                    "Selected"=$true
+                    "IsUnassigned"=$false
+                    "GroupIndex"=0
+                }
+            }
+        }
+
+
         <# Obsolete Asset Searches
         foreach($item in $AssetSerialNumber){
             Get-IIQAsset -SerialNumber $item | ForEach-Object{
@@ -315,9 +337,53 @@ function Get-IIQAsset{
     }
 }
 
+
+
+function Get-IIQTag {
+    [cmdletbinding()]
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = "TagID")]
+        [guid[]]$TagID,
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Tag")]
+        [string[]]$Tag
+    )
+    Begin {
+        #Write-Host "Initialize stuff in Begin block"
+    }
+    Process {
+        foreach ($item in $Tag) {
+            $searchoobject = @{
+                "Facets"        = @("tag")
+                "Query"         = $item
+                "ResultsFilter" = @{
+                    "EntityName"  = "tickets"
+                    "ShowAll"     = $false
+                    "ShowDeleted" = $false
+                }
+            }
+        
+            switch ($PSCmdlet.ParameterSetName) {
+                "TagID" { Get-IIQObject "/assets/$AssetID" }
+                "Tag" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
+                Default { throw "No Parameter set defined" }
+            }
+        }
+    }
+    End {
+        #Write-Host "Final work in End block"
+    }
+}
+
+
+
+
+
+
 Export-ModuleMember -Function Invoke-IIQMethod
 Export-ModuleMember -Function Get-IIQObject
 Export-ModuleMember -Function Get-IIQTicket
 Export-ModuleMember -Function Get-IIQAsset
+Export-ModuleMember -Function Get-IIQTag
 Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
