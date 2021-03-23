@@ -142,6 +142,24 @@ function Get-IIQObject {
 
 
 }
+<#
+.Synopsis
+   Gets tickets from IncidentIQ
+.EXAMPLE
+   Get-IIQTicket -AssetID '416b71e3-502a-426f-9cf5-184e535384b4'
+.EXAMPLE
+   Get-IIQTicket -AssetID 416b71e3-502a-426f-9cf5-184e535384b4,c0c01df5-3e92-46a9-8abd-126732886085
+.EXAMPLE
+    Get-IIQTicket -TicketNumber 123456
+.EXAMPLE
+    Get-IIQTicket -AssetSerialNumber SN123987
+.EXAMPLE
+    Get-IIQTicket -AssetTag 2743955
+.EXAMPLE
+    Get-IIQTicket -AssetTag '2743955' -AssetSerialNumber SN123987,SN456987 -AssetID 416b71e3-502a-426f-9cf5-184e535384b4
+.NOTES
+   Search logic roughly matches web interface where chained rules use and logic except for assets which combine with or
+#>
 function Get-IIQTicket{
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
