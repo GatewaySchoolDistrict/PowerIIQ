@@ -46,7 +46,10 @@ function Invoke-IIQMethod {
     [switch]$OnlySetMappedProperties,
     $Data
     )
-
+    if ($VerbosePreference -eq "Continue"){
+        $DataOutput=$Data | ConvertTo-Json -Depth 10
+        Write-Verbose "Data: $DataOutput"
+    }
     Invoke-IIQMethodV1 -Path $Path -Method $Method -OnlySetMappedProperties:$OnlySetMappedProperties -Data $Data
 
 }
@@ -185,6 +188,12 @@ function Get-IIQTicket{
         [ValidateNotNullOrEmpty()]
         [string[]]$Tag,
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Agent,
+        [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Requestor,
+        [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
         [switch]$All
     )
 
@@ -226,6 +235,30 @@ function Get-IIQTicket{
                 $filters+=New-IIQFacetObject -Facet tag -Id $TagID
             }
         }
+        foreach($item in $Agent){
+            if($item -as [guid] -eq $null){
+                Get-IIQUser -Search $item | ForEach-Object{
+                    if ($_ -eq $null) {continue}
+                    $filters+=New-IIQFacetObject -Facet agent -Id $_.UserId
+                }
+            } else {
+                $filters+=New-IIQFacetObject -Facet agent -Id $item    
+            }
+        }
+        foreach($item in $Requestor){
+            if($item -as [guid] -eq $null){
+                Get-IIQUser -Search $item | ForEach-Object{
+                    if ($_ -eq $null) {continue}
+                    $filters+=New-IIQFacetObject -Facet user -Id $_.UserId
+                }
+            } else {
+                $filters+=New-IIQFacetObject -Facet user -Id $item    
+            }
+        }
+        
+        
+
+
 
         if($filters.Length -eq 0 -and $All -ne $true){return}
         $Parameters=@{
@@ -318,14 +351,15 @@ function Get-IIQUser {
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = "UserID")]
         [guid[]]$UserID,
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Search")]
-        [string[]]$Search,
+        [string]$Search,
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Username")]
-        [string[]]$Username
+        [string]$Username
     )
         
     switch ($PSCmdlet.ParameterSetName) {
         "UserID" { Get-IIQObject "/users/$UserID" }
-        "Search" { Get-IIQObject -Method POST "/search" -data "{""Query"":""$Search"",""Facets"":4,""Limit"":20}" }
+        "Search" { (Get-IIQObject -Method POST "/search" -data @{"Query"=$Search;"Facets"=4;"Limit"=20}).Users }
+        "Username" { Get-IIQObject -Method POST "/filters" -data @{"Facets"=@("user");"Query"=$Username;"ResultsFilter"=@{"EntityName"="users";"ShowAll"=$false;"ShowDeleted"=$false}} }
         #"Username" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
         Default { throw "No Parameter set defined" }
     }
