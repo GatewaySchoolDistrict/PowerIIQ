@@ -394,6 +394,32 @@ function New-IIQFacetObject {
 }
 
 
+function Get-IIQFilterItem {
+    [cmdletbinding()]
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Facet,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Search,
+        [Parameter(Mandatory = $true)]
+        [string]$EntityName
+    )
+
+    foreach ($item in $Search) {
+        $SearchObject = @{
+            "Facets"        = @($Facet)
+            "Query"         = $item
+            "ResultsFilter" = @{
+                "EntityName"  = $EntityName
+                "ShowAll"     = $false
+                "ShowDeleted" = $false
+            }
+        }
+    Get-IIQObject -Method POST -Path '/filters' -data $SearchObject
+    }
+}
+
 
 
 Export-ModuleMember -Function Invoke-IIQMethod
@@ -402,5 +428,7 @@ Export-ModuleMember -Function Get-IIQTicket
 Export-ModuleMember -Function Get-IIQAsset
 Export-ModuleMember -Function Get-IIQTag
 Export-ModuleMember -Function Get-IIQUser
+Export-ModuleMember -Function Get-IIQFilterItem
+Export-ModuleMember -Function New-IIQFacetObject
 Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
