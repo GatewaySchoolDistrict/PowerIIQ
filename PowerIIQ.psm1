@@ -119,11 +119,12 @@ function Get-IIQObject {
     if ($RawResults.Paging -eq $null){
         Write-Verbose "No paging info found returning results"
         $CompiledResults
-    } elseif ($RawResults.Paging.PageCount -eq 1 -or $Paging -eq $false){
+    } elseif ($RawResults.Paging.PageCount -le 1 -or $Paging -eq $false){
         Write-Verbose "No need to page returning results"
         $CompiledResults
     } else {
         Write-Verbose "Paging required"
+        Write-Verbose $RawResults.Paging
         
         $CurrentPage=$RawResults.Paging.PageIndex+1
         do {
@@ -179,7 +180,7 @@ function Get-IIQTicket{
         [ValidateNotNullOrEmpty()]
         [string[]]$AssetTag,
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
-        [uint[]]$TicketNumber,
+        [string[]]$TicketNumber,
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
         [ValidateNotNullOrEmpty()]
         [string[]]$Tag,
@@ -215,7 +216,8 @@ function Get-IIQTicket{
             $filters+=New-IIQFacetObject -Facet ticketstate -Name $item -Id $guid
         }     
         foreach($item in $TicketNumber){
-            $filters+=New-IIQFacetObject -Facet ticketnumber -Value $item
+            if ($item -match "^!"){$Negative=$true;$item=$item -replace "^!",""} else {$Negative=$false}
+            $filters+=New-IIQFacetObject -Facet ticketnumber -Value $item -Negative $Negative
         }
         foreach($item in $Tag){
             Get-IIQTag -Tag $item | ForEach-Object{
