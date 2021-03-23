@@ -292,7 +292,6 @@ function Get-IIQAsset{
     }
     Process {
         #Write-host "Stuff in Process block to perform"
-        #Write-Host $AssetId
         switch ($PSCmdlet.ParameterSetName) {
             "AssetID" { Get-IIQObject "/assets/$AssetID" }
             "AssetTag" { Get-IIQObject "/assets/assettag/$AssetTag" }
@@ -312,55 +311,41 @@ function Get-IIQTag {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = "TagID")]
-        [guid[]]$TagID,
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Tag")]
-        [string[]]$Tag
+        [Parameter(Mandatory = $true, ParameterSetName = "TagID")]
+        [guid]$TagID,
+        [Parameter(Mandatory = $true, Position=0, ParameterSetName = "Tag")]
+        [string]$Tag
     )
-    Begin {
-        #Write-Host "Initialize stuff in Begin block"
-    }
-    Process {
-        foreach ($item in $Tag) {
-            $searchoobject = @{
-                "Facets"        = @("tag")
-                "Query"         = $item
-                "ResultsFilter" = @{
-                    "EntityName"  = "tickets"
-                    "ShowAll"     = $false
-                    "ShowDeleted" = $false
-                }
+    switch ($PSCmdlet.ParameterSetName) {
+        "TagID" { Get-IIQObject "/tags/$TagID" }
+        "Tag" { 
+            Get-IIQFilterItem -Facet tag -Search $Tag -EntityName tickets | ForEach-Object  {
+                if ($_ -eq $null) {continue}
+                Get-IIQTag -TagID $_.Id
             }
-        
-            switch ($PSCmdlet.ParameterSetName) {
-                "TagID" { Get-IIQObject "/assets/$TagID" }
-                "Tag" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
-                Default { throw "No Parameter set defined" }
-            }
-        }
-    }
-    End {
-        #Write-Host "Final work in End block"
-    }
+         }
+        Default { throw "No Parameter set defined" }
+    }                   
 }
 
 function Get-IIQUser {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = "UserID")]
-        [guid[]]$UserID,
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Search")]
-        [string]$Search,
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "Username")]
-        [string]$Username
+        [Parameter(Mandatory = $true, ParameterSetName = "UserID")]
+        [guid]$UserID,
+        [Parameter(Mandatory = $true, Position=0, ParameterSetName = "Search")]
+        [string]$Search
     )
         
     switch ($PSCmdlet.ParameterSetName) {
         "UserID" { Get-IIQObject "/users/$UserID" }
-        "Search" { (Get-IIQObject -Method POST "/search" -data @{"Query"=$Search;"Facets"=4;"Limit"=20}).Users }
-        "Username" { Get-IIQObject -Method POST "/filters" -data @{"Facets"=@("user");"Query"=$Username;"ResultsFilter"=@{"EntityName"="users";"ShowAll"=$false;"ShowDeleted"=$false}} }
-        #"Username" { Get-IIQObject -Method POST -Path '/filters'  -data  $searchoobject }
+        "Search" { 
+            Get-IIQFilterItem -Facet user -Search $Search -EntityName users | ForEach-Object  {
+                if ($_ -eq $null) {continue}
+                Get-IIQUser -UserID $_.Id
+            }
+        }
         Default { throw "No Parameter set defined" }
     }
 }
@@ -392,7 +377,6 @@ function New-IIQFacetObject {
     }
     return $FacetObject
 }
-
 
 function Get-IIQFilterItem {
     [cmdletbinding()]
