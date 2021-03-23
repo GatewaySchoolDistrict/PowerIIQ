@@ -101,10 +101,11 @@ function Get-IIQObject {
         [Parameter(Mandatory=$true)][string]$Path,
         [ValidateSet("GET","POST")]
         [string]$Method="GET",
+        [bool]$Paging=$true,
         $data
     )
 
-
+    Write-Verbose "IIQObject $Method  $Path"
     $RawResults=Invoke-IIQMethod -Method $Method -Path $Path -Data $data
     if ($RawResults.Item -ne $null -and $RawResults.Item.Length -gt 0){
         $CompiledResults=$RawResults.Item
@@ -114,35 +115,31 @@ function Get-IIQObject {
         $CompiledResults=$null
     }
 
-    return $CompiledResults
 
-<#
-    if ($RawResults.Paging.PageCount -eq 1){
-        Write-Verbose "No Pages"
-        return $CompiledResults
+    if ($RawResults.Paging -eq $null){
+        Write-Verbose "No paging info found returning results"
+        $CompiledResults
+    } elseif ($RawResults.Paging.PageCount -eq 1 -or $Paging -eq $false){
+        Write-Verbose "No need to page returning results"
+        $CompiledResults
+    } else {
+        Write-Verbose "Paging required"
+        
+        $CurrentPage=$RawResults.Paging.PageIndex+1
+        do {
+            $PercentComplete=($CurrentPage/$RawResults.Paging.PageCount)*100
+            Write-Progress -Activity "Paging $Method Request $Path" -Status "Page $CurrentPage of $($RawResults.Paging.PageCount)" -PercentComplete $PercentComplete
+            Write-Verbose $RawResults.Paging
+            $NewPath="$Path&`$p=$CurrentPage"
+            $RawResults=Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data
+            $CompiledResults+=$RawResults.Items
+            $CurrentPage=$RawResults.Paging.PageIndex+1
+            if($cursorColumn -eq 1){throw "Error while paging results"}
+        } while ($CurrentPage -lt $RawResults.Paging.PageCount)
+        Write-Progress -Activity "Paging $Method Request $Path" -Completed
+        $CompiledResults
     }
 
-
-    $CurrentPage=0
-    do {
-        $CurrentPage++
-        $PercentComplete=(($CurrentPage+1)/$RawResults.Paging.PageCount)*100
-        $NewPath="$Path&`$p=$CurrentPage"
-        Write-Progress -Activity "Paging Request" -Status "Page $($CurrentPage+1) of $($RawResults.Paging.PageCount)" -PercentComplete $PercentComplete
-        Write-Verbose $NewPath
-        $RawResults=Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data
-        if ($RawResults.Item -ne $null -and $RawResults.Item.Length -gt 0){
-            $CompiledResults+=$RawResults.Item
-        } elseif ($RawResults.Items -ne $null -and $RawResults.Items.Length -gt 0){
-            $CompiledResults+=$RawResults.Items
-        } else {
-            $CompiledResults+=$null
-        }
-        Write-Verbose $RawResults.Paging
-    } while(($RawResults.Paging.PageIndex+1) -lt $RawResults.Paging.PageCount)
-    Write-Progress -Activity "Paging Request" -Completed
-    return $CompiledResults
-#>
 
 }
 function Get-IIQTicket{
