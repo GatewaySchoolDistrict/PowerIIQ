@@ -331,22 +331,25 @@ function Get-IIQUser {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
-        [Parameter(Mandatory = $true, ParameterSetName = "UserID")]
+        [Parameter(Mandatory = $true,ValueFromPipelineByPropertyName,ValueFromPipeline, ParameterSetName = "UserID")]
         [guid]$UserID,
-        [Parameter(Mandatory = $true, Position=0, ParameterSetName = "Search")]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Search")]
         [string]$Search
     )
-        
-    switch ($PSCmdlet.ParameterSetName) {
-        "UserID" { Get-IIQObject "/users/$UserID" }
-        "Search" { 
-            Get-IIQFilterItem -Facet user -Search $Search -EntityName users | ForEach-Object  {
-                if ($_ -eq $null) {continue}
-                Get-IIQUser -UserID $_.Id
+    Begin {}
+    Process {
+        switch ($PSCmdlet.ParameterSetName) {
+            "UserID" { Get-IIQObject "/users/$UserID" }
+            "Search" { 
+                Get-IIQFilterItem -Facet user -Search $Search -EntityName users | ForEach-Object {
+                    if ($_ -eq $null) { continue }
+                    Get-IIQUser -UserID $_.Id
+                }
             }
+            Default { throw "No Parameter set defined" }
         }
-        Default { throw "No Parameter set defined" }
     }
+    End {}
 }
 
 function New-IIQFacetObject {
