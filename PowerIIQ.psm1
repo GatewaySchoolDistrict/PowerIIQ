@@ -256,10 +256,6 @@ function Get-IIQTicket{
             }
         }
         
-        
-
-
-
         if($filters.Length -eq 0 -and $All -ne $true){return}
         $Parameters=@{
             "ProductId"=$_IIQConnectionInfo.ProductID
@@ -272,38 +268,29 @@ function Get-IIQTicket{
         Get-IIQObject -Path $Path -Data $Parameters -Method POST
     }
 }
-function Get-IIQAsset{
+function Get-IIQAsset {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
-        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName, ParameterSetName="AssetID")]
-        [guid[]]$AssetID,
-        [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName,ValueFromPipeline,  ParameterSetName="AssetTag")]
-        [string[]]$AssetTag,
-        [Parameter(Mandatory=$true, ParameterSetName="SerialNumber")]
-        [string[]]$SerialNumber,
-        [Parameter(Mandatory=$true, ParameterSetName="ViewID")]
+        [Parameter(Mandatory = $true, ParameterSetName = "AssetID")]
+        [guid]$AssetID,
+        [Parameter(Mandatory = $true, ParameterSetName = "AssetTag")]
+        [string]$AssetTag,
+        [Parameter(Mandatory = $true, ParameterSetName = "SerialNumber")]
+        [string]$SerialNumber,
+        [Parameter(Mandatory = $true, ParameterSetName = "ViewID")]
         [guid]$ViewID,
-        [Parameter(Mandatory=$false, ParameterSetName="ViewID")]
-        [int]$Limit=100
+        [Parameter(Mandatory = $false, ParameterSetName = "ViewID")]
+        [int]$Limit = 100
     )
-    Begin {
-        #Write-Host "Initialize stuff in Begin block"
-    }
-    Process {
-        #Write-host "Stuff in Process block to perform"
-        switch ($PSCmdlet.ParameterSetName) {
-            "AssetID" { Get-IIQObject "/assets/$AssetID" }
-            "AssetTag" { Get-IIQObject "/assets/assettag/$AssetTag" }
-            "SerialNumber" { Get-IIQObject "/assets/serial/$SerialNumber" }
-            "ViewID" { 
-                Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data "{""OnlyShowDeleted"":false,""Filters"":[{""Facet"":""View"",""Id"":""$ViewID""}],""FilterByViewPermission"":true}"
-            }
-            Default {throw "No Parameter set defined"}
+    switch ($PSCmdlet.ParameterSetName) {
+        "AssetID" { Get-IIQObject "/assets/$AssetID" }
+        "AssetTag" { Get-IIQObject "/assets/assettag/$AssetTag" }
+        "SerialNumber" { Get-IIQObject "/assets/serial/$SerialNumber" }
+        "ViewID" { 
+            Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
         }
-    }
-    End {
-        #Write-Host "Final work in End block"
+        Default { throw "No Parameter set defined" }
     }
 }
 
