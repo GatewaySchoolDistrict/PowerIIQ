@@ -275,6 +275,7 @@ function Get-IIQTicket{
             Get-IIQObject -Path $Path -Data $Parameters -Method POST | ForEach-Object{
                 if ($_ -eq $null) {continue}
                 $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline") -PassThru
+                #$_ | Add-Member -MemberType ScriptProperty -Name Timeline -Value {Get-IIQObject -Path "/tickets/$($this.TicketId)/timeline"} -PassThru
             }
         }
     }
