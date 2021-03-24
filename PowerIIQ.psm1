@@ -194,16 +194,14 @@ function Get-IIQTicket{
         [ValidateNotNullOrEmpty()]
         [string[]]$Requestor,
         [Parameter(Mandatory=$false, ParameterSetName="TicketSearch")]
-        [switch]$All
+        [switch]$All,
+        [switch]$Timeline
     )
 
-    if ($PSCmdlet.ParameterSetName -eq "TicketID" ){
-        Get-IIQObject "/tickets/$TicketID"
-    }
+
 
     if ($PSCmdlet.ParameterSetName -eq "TicketSearch" ){
         $filters=@()
-
         foreach($item in $AssetSerialNumber){
             Get-IIQAsset -SerialNumber $item | ForEach-Object{
                 if ($_ -eq $null) {continue}
@@ -265,7 +263,20 @@ function Get-IIQTicket{
             "FilterByProduct"=$true
         }
         $Path='/tickets?$s='+$Limit
-        Get-IIQObject -Path $Path -Data $Parameters -Method POST
+
+
+        if ($PSCmdlet.ParameterSetName -eq "TicketID" ){
+            Get-IIQObject "/tickets/$TicketID"
+        }
+
+        if($Timeline -eq $false){
+            Get-IIQObject -Path $Path -Data $Parameters -Method POST
+        } else {
+            Get-IIQObject -Path $Path -Data $Parameters -Method POST | ForEach-Object{
+                if ($_ -eq $null) {continue}
+                $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline") -PassThru
+            }
+        }
     }
 }
 function Get-IIQAsset {
