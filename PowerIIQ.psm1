@@ -112,10 +112,10 @@ function Get-IIQObject {
 
     Write-Verbose "IIQObject $Method  $Path"
     $RawResults = Invoke-IIQMethod -Method $Method -Path $Path -Data $data
-    if ($RawResults.Item -ne $null -and $RawResults.Item.Length -gt 0) {
+    if ($null -ne $RawResults.Item -and $RawResults.Item.Length -gt 0) {
         $CompiledResults = $RawResults.Item
     }
-    elseif ($RawResults.Items -ne $null -and $RawResults.Items.Length -gt 0) {
+    elseif ($null -ne $RawResults.Items -and $RawResults.Items.Length -gt 0) {
         $CompiledResults = $RawResults.Items
     }
     else {
@@ -123,7 +123,7 @@ function Get-IIQObject {
     }
 
 
-    if ($RawResults.Paging -eq $null) {
+    if ($null -eq $RawResults.Paging) {
         Write-Verbose "No paging info found returning results"
         $CompiledResults
     }
@@ -240,7 +240,7 @@ function Get-IIQTicket {
                 }
             }
             foreach ($item in $Agent) {
-                if ($item -as [guid] -eq $null) {
+                if ($null -eq $item -as [guid]) {
                     Get-IIQUser -Search $item | ForEach-Object {
                         if ($_ -eq $null) { continue }
                         $filters += New-IIQFacetObject -Facet agent -Id $_.UserId
@@ -251,7 +251,7 @@ function Get-IIQTicket {
                 }
             }
             foreach ($item in $Requestor) {
-                if ($item -as [guid] -eq $null) {
+                if ($null -eq $item -as [guid]) {
                     Get-IIQUser -Search $item | ForEach-Object {
                         if ($_ -eq $null) { continue }
                         $filters += New-IIQFacetObject -Facet user -Id $_.UserId
