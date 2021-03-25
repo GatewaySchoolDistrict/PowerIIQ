@@ -442,6 +442,18 @@ function Get-IIQFilterItem {
     }
 }
 
+function Update-IIQTicket{
+    [cmdletbinding()]
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "TicketID")]
+        [guid]$TicketID
+    )
+    Begin {}
+    Process {}
+    End {}
+}
+
 
 
 Export-ModuleMember -Function Invoke-IIQMethod
@@ -454,3 +466,4 @@ Export-ModuleMember -Function Get-IIQFilterItem
 Export-ModuleMember -Function New-IIQFacetObject
 Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
+Export-ModuleMember -Function Update-IIQTicket
