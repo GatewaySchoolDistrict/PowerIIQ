@@ -201,6 +201,10 @@ function Get-IIQTicket {
         [ValidateNotNullOrEmpty()]
         [string[]]$Requestor,
         [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
+        [datetime]$UpdatedFrom,
+        [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
+        [datetime]$UpdatedTo,
+        [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
         [switch]$All,
         [switch]$Timeline
     )
@@ -261,6 +265,15 @@ function Get-IIQTicket {
                     $filters += New-IIQFacetObject -Facet user -Id $item    
                 }
             }
+            if($null -ne $UpdatedTo -or $null -ne $UpdatedFrom){
+                if($null -eq $UpdatedFrom){$UpdatedFrom=Get-Date}
+                if($null -eq $UpdatedTo){$UpdatedTo=Get-Date}
+                $FacetValue="daterange:{0:MM/dd/yyyy}-{1:MM/dd/yyyy}" -f $UpdatedFrom,$UpdatedTo
+                $filters += New-IIQFacetObject -Facet modifieddate -Value $FacetValue
+            }
+
+
+
         
             if ($filters.Length -eq 0 -and $All -ne $true) { return }
             $Parameters = @{
