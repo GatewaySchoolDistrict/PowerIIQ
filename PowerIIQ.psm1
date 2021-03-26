@@ -24,14 +24,16 @@ function Connect-IIQ {
     $_IIQConnectionInfo.APIToken = $APIToken
     $_IIQConnectionInfo.SiteID = $SiteID
     $_IIQConnectionInfo.BaseURL = $BaseURL
+    $_IIQConnectionInfo.ProductID = $ProductID
     $_IIQConnectionInfo.Status = 'Connected'
     $TokenRequest=@{"SiteId"=$_IIQConnectionInfo.SiteID;"UserToken"=$_IIQConnectionInfo.APIToken}
+    $_IIQConnectionInfo
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
     } else {
         Disconnect-IIQ
-        throw "Connect wiht Connect-IIQ first"
+        throw "Connect with Connect-IIQ first"
     }
 }
 function Disconnect-IIQ {
