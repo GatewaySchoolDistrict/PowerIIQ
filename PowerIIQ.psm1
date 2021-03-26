@@ -10,7 +10,8 @@ function Connect-IIQ {
         [Parameter(Mandatory = $true)][string]$APIToken,
         [Parameter(Mandatory = $true)][guid]$SiteID,
         [Parameter(Mandatory = $true)][string]$BaseURL,
-        [Parameter(Mandatory = $true)][guid]$ProductID
+        [Parameter(Mandatory = $true)][guid]$ProductID,
+        [Parameter(Mandatory = $false)][bool]$ReadOnly=$false
     )
     $_IIQConnectionInfo = @{
         APIToken  = $null
@@ -18,12 +19,23 @@ function Connect-IIQ {
         BaseURL   = $null
         ProductID = $null
         Status    = $null
+        UserID    = $null
+        ReadOnly  = $null
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
     $_IIQConnectionInfo.APIToken = $APIToken
     $_IIQConnectionInfo.SiteID = $SiteID
     $_IIQConnectionInfo.BaseURL = $BaseURL
     $_IIQConnectionInfo.Status = 'Connected'
+    $_IIQConnectionInfo.ReadOnly = $ReadOnly
+    $TokenRequest=@{"SiteId"=$_IIQConnectionInfo.SiteID;"UserToken"=$_IIQConnectionInfo.APIToken}
+    $Result=Get-IIQObject -Path "/login"
+    if ($null -ne $Result){
+        $_IIQConnectionInfo.UserID = $Result.UserID
+    } else {
+        Disconnect-IIQ
+        throw "Connect wiht Connect-IIQ first"
+    }
 }
 function Disconnect-IIQ {
     if ($_IIQConnectionInfo.Status -eq 'Connected') {
@@ -32,41 +44,35 @@ function Disconnect-IIQ {
         $_IIQConnectionInfo.BaseURL = $null
         $_IIQConnectionInfo.ProductID = $null
         $_IIQConnectionInfo.Status = $null
+        $_IIQConnectionInfo.UserID    = $null
+        $_IIQConnectionInfo.ReadOnly    = $null
     }
 }
 function Invoke-IIQMethod {
+    [CmdletBinding(SupportsShouldProcess)]
     param(  
-        [Parameter(
-            Mandatory = $true
-        )
-        ][string]$Path,
-        #[Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)][string]$Path,
         [ValidateSet("GET", "PUT", "POST", "DELETE")]
         [string]$Method = "GET",
         [switch]$OnlySetMappedProperties,
         $Data
     )
-    if ($VerbosePreference -eq "Continue") {
-        $DataOutput = $Data | ConvertTo-Json -Depth 10
-        Write-Verbose "Data: $DataOutput"
-    }
-    Invoke-IIQMethodV1 -Path $Path -Method $Method -OnlySetMappedProperties:$OnlySetMappedProperties -Data $Data
 
+    $DataOutput = $Data | ConvertTo-Json -Depth 10
+    $Message="Invoke-IIQMethod: Performing $Method at $Path with $DataOutput"
+    Write-Verbose $Message
+    Invoke-IIQMethodV1 -Path $Path -Method $Method -OnlySetMappedProperties:$OnlySetMappedProperties -Data $Data
 }
 function Invoke-IIQMethodV1 {
+    [CmdletBinding(SupportsShouldProcess)]
     param(  
-        [Parameter(
-            Mandatory = $true
-        )
-        ][string]$Path,
-        #[Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
         [ValidateSet("GET", "PUT", "POST", "DELETE")]
         [string]$Method = "GET",
         [switch]$OnlySetMappedProperties,
         $Data
     )
-
-
 
     if ($_IIQConnectionInfo.Status -ne 'Connected') { throw "Connect wiht Connect-IIQ first" }
 
@@ -85,7 +91,7 @@ function Invoke-IIQMethodV1 {
     }
 
 
-    if ($Data -is [hashtable]) {
+    if ($Data -is [hashtable] -or $Data -is [System.Collections.Specialized.OrderedDictionary]) {
         $json = $Data | ConvertTo-Json -Depth 10
     }
     else {
@@ -93,15 +99,21 @@ function Invoke-IIQMethodV1 {
     }
     
     $url = "$baseurl$Path"
-    Write-Verbose "Rest URL: $url"
-    if ($Method -in 'GET', 'DELETE') {
-        Invoke-RestMethod $url -Method $Method -Headers $authheaders -ContentType "application/json" -Verbose:$false
-    }
-    else {
-        Invoke-RestMethod $url -Method $Method -Headers $authheaders  -ContentType "application/json" -Body $json -Verbose:$false
+
+    $Message="Invoke-IIQMethodV1: Performing $Method at $url with $json"
+    Write-Verbose $Message
+
+    if ($PSCmdlet.ShouldProcess($Message, $Message, 'Invoke-IIQMethodV1:')) {
+        if ($Method -in 'GET', 'DELETE') {
+            Invoke-RestMethod $url -Method $Method -Headers $authheaders -ContentType "application/json" -Verbose:$false
+        }
+        else {
+            Invoke-RestMethod $url -Method $Method -Headers $authheaders  -ContentType "application/json" -Body $json -Verbose:$false
+        }
     }
 }
 function Get-IIQObject {
+    [CmdletBinding(SupportsShouldProcess)]
     param(  
         [Parameter(Mandatory = $true)][string]$Path,
         [ValidateSet("GET", "POST")]
@@ -149,8 +161,6 @@ function Get-IIQObject {
         Write-Progress -Activity "Paging $Method Request $Path" -Completed
         $CompiledResults
     }
-
-
 }
 <#
 .Synopsis
@@ -337,7 +347,6 @@ function Get-IIQAsset {
     }
     End {}
 }
-
 function Get-IIQTag {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
@@ -362,7 +371,6 @@ function Get-IIQTag {
     }
     End {}
 }
-
 function Get-IIQUser {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
@@ -387,7 +395,6 @@ function Get-IIQUser {
     }
     End {}
 }
-
 function New-IIQFacetObject {
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
@@ -415,7 +422,6 @@ function New-IIQFacetObject {
     }
     return $FacetObject
 }
-
 function Get-IIQFilterItem {
     [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
@@ -441,20 +447,67 @@ function Get-IIQFilterItem {
         Get-IIQObject -Method POST -Path '/filters' -data $SearchObject
     }
 }
-
-function Update-IIQTicket{
-    [cmdletbinding()]
-    [CmdletBinding(DefaultParameterSetName = 'None')]
+function Update-IIQTicket {
+    [CmdletBinding(DefaultParameterSetName = 'Comment', SupportsShouldProcess = $True)]
     param(
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "TicketID")]
-        [guid]$TicketID
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [guid]$TicketID,
+        [Parameter(Mandatory = $true, ParameterSetName = "Comment")]
+        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
+        [string]$Comment,
+        [switch]$Visible,
+        [Parameter(Mandatory = $false, ParameterSetName = "Comment")]
+        [string]$Status,
+        [Parameter(Mandatory = $false)]
+        [guid]$UserId,
+        [Parameter(Mandatory = $false)]
+        [bool]$SendEmails,
+        [Parameter(Mandatory = $true, ParameterSetName = "Action")]
+        [Alias('ResolutionActionId')]
+        [guid]$ActionID,
+        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
+        [uint]$Effort,
+        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
+        [datetime]$Date = (Get-Date)
     )
-    Begin {}
-    Process {}
+    Begin {
+        if ($UserId -eq $null) {
+            $UserId = $_IIQConnectionInfo.UserID
+        }
+    }
+    Process {
+        $actions = @()
+        if ($PSCmdlet.ParameterSetName -eq "Comment" ) {
+            $actions += [ordered]@{
+                "`$type"               = "Spark.Shared.Models.TicketActivityComment, Spark.Shared"
+                "TicketActivityTypeId" = 6
+                "ByUserId"             = $UserId
+                "Comments"             = $Comment
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq "Action" ) {
+            $actions += [ordered]@{
+                "TicketActivityTypeId" = 8
+                "ActivityDate"         = '{0:yyyy-MM-ddTHH:mm:ss:fffZ}' -f $Date
+                "ByUserId"             = $UserId
+                "ResolutionActionId"   = $ActionID
+                "Notes"                = $Comment
+                "Effort"               = $Effort
+                "EffortIsValid"        = $true
+            }
+        }
+        $Activity = [ordered]@{
+            "TicketId"         = $TicketID
+            "ActivityItems"    = $actions
+            "IsPublic"         = [bool]$Visible
+            "WaitForResponse"  = $false
+            "TicketWasUpdated" = $SendEmails
+        }
+        $Path = "/tickets/$TicketID/activities/new"
+        Get-IIQObject -Method POST -Path $Path -Data $Activity
+    }
     End {}
 }
-
-
 
 Export-ModuleMember -Function Invoke-IIQMethod
 Export-ModuleMember -Function Get-IIQObject
