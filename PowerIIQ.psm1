@@ -10,8 +10,7 @@ function Connect-IIQ {
         [Parameter(Mandatory = $true)][string]$APIToken,
         [Parameter(Mandatory = $true)][guid]$SiteID,
         [Parameter(Mandatory = $true)][string]$BaseURL,
-        [Parameter(Mandatory = $true)][guid]$ProductID,
-        [Parameter(Mandatory = $false)][bool]$ReadOnly=$false
+        [Parameter(Mandatory = $true)][guid]$ProductID
     )
     $_IIQConnectionInfo = @{
         APIToken  = $null
@@ -20,14 +19,12 @@ function Connect-IIQ {
         ProductID = $null
         Status    = $null
         UserID    = $null
-        ReadOnly  = $null
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
     $_IIQConnectionInfo.APIToken = $APIToken
     $_IIQConnectionInfo.SiteID = $SiteID
     $_IIQConnectionInfo.BaseURL = $BaseURL
     $_IIQConnectionInfo.Status = 'Connected'
-    $_IIQConnectionInfo.ReadOnly = $ReadOnly
     $TokenRequest=@{"SiteId"=$_IIQConnectionInfo.SiteID;"UserToken"=$_IIQConnectionInfo.APIToken}
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
@@ -45,7 +42,6 @@ function Disconnect-IIQ {
         $_IIQConnectionInfo.ProductID = $null
         $_IIQConnectionInfo.Status = $null
         $_IIQConnectionInfo.UserID    = $null
-        $_IIQConnectionInfo.ReadOnly    = $null
     }
 }
 function Invoke-IIQMethod {
@@ -254,7 +250,7 @@ function Get-IIQTicket {
                 }
             }
             foreach ($item in $Agent) {
-                if ($null -eq $item -as [guid]) {
+                if ($item -as [guid] -eq $null) {
                     Get-IIQUser -Search $item | ForEach-Object {
                         if ($_ -eq $null) { continue }
                         $filters += New-IIQFacetObject -Facet agent -Id $_.UserId
@@ -265,7 +261,7 @@ function Get-IIQTicket {
                 }
             }
             foreach ($item in $Requestor) {
-                if ($null -eq $item -as [guid]) {
+                if ($item -as [guid] -eq $null) {
                     Get-IIQUser -Search $item | ForEach-Object {
                         if ($_ -eq $null) { continue }
                         $filters += New-IIQFacetObject -Facet user -Id $_.UserId
