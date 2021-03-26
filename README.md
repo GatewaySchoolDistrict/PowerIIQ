@@ -18,13 +18,12 @@ Get-IIQAsset -SerialNumber AssetSerialHERE
 
 Get-IIQAsset -AssetTag AssetTagHERE
 
+
+Get-IIQTicket:
+
 Get-IIQTicket -AssetID 'AssetGUIDHERE' -Limit 20
 
-Get-IIQTicket -AssetID AssetGUIDHERE,AssetGUIDHERE
-
 Get-IIQTicket -AssetID AssetGUIDHERE,AssetGUIDHERE -State Open
-
-Get-IIQTicket -AssetID AssetGUIDHERE -State Closed
 
 Get-IIQTicket -TicketNumber TicketNumberHERE
 
@@ -32,9 +31,20 @@ Get-IIQTicket -AssetSerialNumber AssetSerialHERE
 
 Get-IIQTicket -All
 
-Get-IIQTicket -AssetTag AssetTagHERE -All
+Get-IIQTicket -AssetTag AssetTagHERE 
 
-Get-IIQTicket -AssetTag 'AssetTagHERE' -AssetSerialNumber AssetSerialHERE,AssetSerialHERE -AssetID AssetGUIDHERE -Limit 3
+Get-IIQTag -Tag HARDWARE_AGI_REPAIR
+
+Get-IIQTicket -Agent AGENTUSER -State Open 
+
+Get-IIQTicket -UpdatedFrom '2021-03-23' -UpdatedTo 2021-03-24 -State Open
+
+
+Update-IIQTicket
+
+Get-IIQTicket -TicketNumber 8621 | Update-IIQTicket -Comment "Test" -WhatIf
+
 `
+
 
 
