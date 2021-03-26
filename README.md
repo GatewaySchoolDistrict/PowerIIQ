@@ -1,11 +1,11 @@
 # PowerIIQ
-Powershell scripting to interface for the IncidentIQ Helpdesk/Ticketing system https://www.incidentiq.com/.  This project was more for a learning experience then for actual production use.  There are no guarantees with this software.
+This project provides a PowerShell scripting interface for the IncidentIQ Helpdesk/Ticketing system https://www.incidentiq.com/.  This project was more for a learning experience then for actual production use.  There are no guarantees with this software.
 
 ## Note
-Note: The current PowerIIQ module was tested under PowerShell 7.1.2 but does not appear to to work in PowerShell 5.1 and I am not sure why.  A simplified invoke method is provided as an example if you wish to use an older version of PowerShell.
+Note: The current PowerIIQ module was tested under PowerShell 7.1.2 but does not appear to work in PowerShell 5.1 and I am not sure why.  A simplified invoke method is provided as an example if you wish to use an older version of PowerShell.
 
 ## Examples
-Note: This is not a complate list of searches and filters implemented by the module.
+Note: This is not a complete list of searches and filters implemented by the module.
 
 ### Loading and Connecting
 ```
