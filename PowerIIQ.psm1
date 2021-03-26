@@ -71,7 +71,7 @@ function Invoke-IIQMethodV1 {
         [switch]$OnlySetMappedProperties,
         $Data
     )
-
+    
     if ($_IIQConnectionInfo.Status -ne 'Connected') { throw "Connect wiht Connect-IIQ first" }
 
     $apitoken = $_IIQConnectionInfo.APIToken
