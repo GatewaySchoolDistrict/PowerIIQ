@@ -459,7 +459,7 @@ function Update-IIQTicket {
         [Parameter(Mandatory = $false)]
         [guid]$UserId,
         [Parameter(Mandatory = $false)]
-        [bool]$SendEmails,
+        [switch]$SendEmails,
         [Parameter(Mandatory = $true, ParameterSetName = "Action")]
         [Alias('ResolutionActionId')]
         [guid]$ActionID,
@@ -499,7 +499,7 @@ function Update-IIQTicket {
             "ActivityItems"    = $actions
             "IsPublic"         = [bool]$Visible
             "WaitForResponse"  = $false
-            "TicketWasUpdated" = $SendEmails
+            "TicketWasUpdated" = [bool]$SendEmails
         }
         $Path = "/tickets/$TicketID/activities/new"
         Get-IIQObject -Method POST -Path $Path -Data $Activity
