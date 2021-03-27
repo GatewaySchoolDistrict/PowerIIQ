@@ -27,7 +27,6 @@ function Connect-IIQ {
     $_IIQConnectionInfo.ProductID = $ProductID
     $_IIQConnectionInfo.Status = 'Connected'
     $TokenRequest=@{"SiteId"=$_IIQConnectionInfo.SiteID;"UserToken"=$_IIQConnectionInfo.APIToken}
-    $_IIQConnectionInfo
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
