@@ -19,6 +19,9 @@ function Connect-IIQ {
         ProductID = $null
         Status    = $null
         UserID    = $null
+        Lookup    = @{
+            TicketStatus    =   @{}
+        }
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
     $_IIQConnectionInfo.APIToken = $APIToken
@@ -30,6 +33,7 @@ function Connect-IIQ {
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
+        Get-IIQObject /tickets/statuses | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.TicketStatusTypeId)}
     } else {
         Disconnect-IIQ
         throw "Connect with Connect-IIQ first"
@@ -445,66 +449,82 @@ function Get-IIQFilterItem {
     }
 }
 function Update-IIQTicket {
-    [CmdletBinding(DefaultParameterSetName = 'Comment', SupportsShouldProcess = $True)]
+    [CmdletBinding(SupportsShouldProcess = $True)]
+    #[CmdletBinding(DefaultParameterSetName = 'Comment', SupportsShouldProcess = $True)]
     param(
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
         [guid]$TicketID,
-        [Parameter(Mandatory = $true, ParameterSetName = "Comment")]
-        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
         [string]$Comment,
         [switch]$Visible,
-        [Parameter(Mandatory = $false, ParameterSetName = "Comment")]
+        [ValidateSet([TicketStatus])]
         [string]$Status,
+        [guid]$StatusID,
         [Parameter(Mandatory = $false)]
         [guid]$UserId,
         [Parameter(Mandatory = $false)]
         [switch]$SendEmails,
-        [Parameter(Mandatory = $true, ParameterSetName = "Action")]
         [Alias('ResolutionActionId')]
         [guid]$ActionID,
-        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
         [uint]$Effort,
-        [Parameter(Mandatory = $false, ParameterSetName = "Action")]
         [datetime]$Date = (Get-Date)
     )
     Begin {
-        if ($UserId -eq $null) {
+        if ($null -eq $UserId) {
             $UserId = $_IIQConnectionInfo.UserID
+        }
+        if ($Status -notin $null,'' -and $null -eq $StatusID) {
+            $StatusID = $_IIQConnectionInfo.Lookup.TicketStatus.$Status
         }
     }
     Process {
-        $actions = @()
-        if ($PSCmdlet.ParameterSetName -eq "Comment" ) {
-            $actions += [ordered]@{
-                "`$type"               = "Spark.Shared.Models.TicketActivityComment, Spark.Shared"
-                "TicketActivityTypeId" = 6
-                "ByUserId"             = $UserId
-                "Comments"             = $Comment
+
+            $actions = @()
+            if ($ActionID -ne $null) {
+                $actions += [ordered]@{
+                    "TicketActivityTypeId" = 8
+                    "ActivityDate"         = '{0:yyyy-MM-ddTHH:mm:ss:fffZ}' -f $Date
+                    "ByUserId"             = $UserId
+                    "ResolutionActionId"   = $ActionID
+                    "Notes"                = $Comment
+                    "Effort"               = $Effort
+                    "EffortIsValid"        = $true
+                }
+            } elseif ($Comment -notin $null,'') {
+                $actions += [ordered]@{
+                    "`$type"               = "Spark.Shared.Models.TicketActivityComment, Spark.Shared"
+                    "TicketActivityTypeId" = 6
+                    "ByUserId"             = $UserId
+                    "Comments"             = $Comment
+                }
             }
-        }
-        if ($PSCmdlet.ParameterSetName -eq "Action" ) {
-            $actions += [ordered]@{
-                "TicketActivityTypeId" = 8
-                "ActivityDate"         = '{0:yyyy-MM-ddTHH:mm:ss:fffZ}' -f $Date
-                "ByUserId"             = $UserId
-                "ResolutionActionId"   = $ActionID
-                "Notes"                = $Comment
-                "Effort"               = $Effort
-                "EffortIsValid"        = $true
+
+            if ($actions.length -gt 0){
+            $Activity = [ordered]@{
+                "TicketId"         = $TicketID
+                "ActivityItems"    = $actions
+                "IsPublic"         = [bool]$Visible
+                "WaitForResponse"  = $false
+                "TicketWasUpdated" = [bool]$SendEmails
             }
+            $Path = "/tickets/$TicketID/activities/new"
+            Get-IIQObject -Method POST -Path $Path -Data $Activity
         }
-        $Activity = [ordered]@{
-            "TicketId"         = $TicketID
-            "ActivityItems"    = $actions
-            "IsPublic"         = [bool]$Visible
-            "WaitForResponse"  = $false
-            "TicketWasUpdated" = [bool]$SendEmails
+
+        if ($null -ne $StatusID) {
+            $Path = "/tickets/$TicketID/status/$StatusID"
+            Get-IIQObject -Method POST -Path $Path
         }
-        $Path = "/tickets/$TicketID/activities/new"
-        Get-IIQObject -Method POST -Path $Path -Data $Activity
     }
     End {}
 }
+
+#Autocompleters
+class TicketStatus : System.Management.Automation.IValidateSetValuesGenerator {
+    [String[]] GetValidValues() {
+        return $Script:_IIQConnectionInfo.Lookup.TicketStatus.keys
+    }
+}
+
 
 Export-ModuleMember -Function Invoke-IIQMethod
 Export-ModuleMember -Function Get-IIQObject
