@@ -21,6 +21,7 @@ function Connect-IIQ {
         UserID    = $null
         Lookup    = @{
             TicketStatus    =   @{}
+            TicketAction    =   @{}
         }
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
@@ -33,7 +34,9 @@ function Connect-IIQ {
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
-        Get-IIQObject /tickets/statuses | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.TicketStatusTypeId)}
+        $workflow=Get-IIQObject /workflows
+        Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
+        Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
     } else {
         Disconnect-IIQ
         throw "Connect with Connect-IIQ first"
@@ -153,7 +156,7 @@ function Get-IIQObject {
             $PercentComplete = ($CurrentPage / $RawResults.Paging.PageCount) * 100
             Write-Progress -Activity "Paging $Method Request $Path" -Status "Page $CurrentPage of $($RawResults.Paging.PageCount)" -PercentComplete $PercentComplete
             Write-Verbose $RawResults.Paging
-            $NewPath = "$Path&`$p=$CurrentPage"
+            if ($Path -contains '?'){$NewPath = "$Path&`$p=$CurrentPage"}else{$NewPath = "$Path`?`$p=$CurrentPage"}
             $RawResults = Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data
             $CompiledResults += $RawResults.Items
             $CurrentPage = $RawResults.Paging.PageIndex + 1
@@ -465,6 +468,8 @@ function Update-IIQTicket {
         [switch]$SendEmails,
         [Alias('ResolutionActionId')]
         [guid]$ActionID,
+        [ValidateSet([TicketAction])]
+        [string]$Action,
         [uint]$Effort,
         [datetime]$Date = (Get-Date)
     )
@@ -475,14 +480,18 @@ function Update-IIQTicket {
         if ($Status -notin $null,'' -and $null -eq $StatusID) {
             $StatusID = $_IIQConnectionInfo.Lookup.TicketStatus.$Status
         }
+        if ($Action -notin $null,'' -and $null -eq $ActionID) {
+            $ActionID = $_IIQConnectionInfo.Lookup.TicketAction.$Action
+        }
     }
     Process {
 
             $actions = @()
             if ($ActionID -ne $null) {
                 $actions += [ordered]@{
+                    "`$type"               = "Spark.Shared.Models.TicketActivityAction, Spark.Shared"
                     "TicketActivityTypeId" = 8
-                    "ActivityDate"         = '{0:yyyy-MM-ddTHH:mm:ss:fffZ}' -f $Date
+                    "ActivityDate"         = '{0:yyyy-MM-ddTHH:mm:ss.fffZ}' -f $Date
                     "ByUserId"             = $UserId
                     "ResolutionActionId"   = $ActionID
                     "Notes"                = $Comment
@@ -524,7 +533,11 @@ class TicketStatus : System.Management.Automation.IValidateSetValuesGenerator {
         return $Script:_IIQConnectionInfo.Lookup.TicketStatus.keys
     }
 }
-
+class TicketAction : System.Management.Automation.IValidateSetValuesGenerator {
+    [String[]] GetValidValues() {
+        return $Script:_IIQConnectionInfo.Lookup.TicketAction.keys
+    }
+}
 
 Export-ModuleMember -Function Invoke-IIQMethod
 Export-ModuleMember -Function Get-IIQObject
