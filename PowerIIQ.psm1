@@ -23,6 +23,8 @@ function Connect-IIQ {
         Lookup    = @{
             TicketStatus    =   @{}
             TicketAction    =   @{}
+            CustomField     =   @{}
+            CustomFieldR     =   @{}
         }
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
@@ -39,6 +41,11 @@ function Connect-IIQ {
             $workflow=Get-IIQObject /workflows
             Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
             Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
+            Get-IIQObject /custom-fields/types | ForEach-Object {
+                if ($_.App.Name){$name="$($_.App.Name):$($_.Name)"} else {$name=$_.Name}
+                $_IIQConnectionInfo.Lookup.CustomField.Add($Name,$_.CustomFieldTypeId)
+                $_IIQConnectionInfo.Lookup.CustomFieldR.Add($_.CustomFieldTypeId,$Name)
+            }
         }
     } else {
         Disconnect-IIQ
@@ -223,6 +230,7 @@ function Get-IIQTicket {
         [datetime]$UpdatedTo,
         [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
         [switch]$All,
+        [hashtable]$Facet,
         [switch]$Timeline
     )
     Begin {}
@@ -288,7 +296,9 @@ function Get-IIQTicket {
                 $FacetValue="daterange:{0:MM/dd/yyyy}-{1:MM/dd/yyyy}" -f $UpdatedFrom,$UpdatedTo
                 $filters += New-IIQFacetObject -Facet modifieddate -Value $FacetValue
             }
-
+            foreach ($item in $Facet) {
+                $filters += $item
+            }
 
 
         
@@ -414,7 +424,8 @@ function New-IIQFacetObject {
         [string]$SortOrder = "",
         [bool]$Selected = $true,
         [bool]$IsUnassigned = $false,
-        [uint]$GroupIndex = 0
+        [uint]$GroupIndex = 0,
+        [guid]$CustomFieldTypeId
     )
     $FacetObject = @{
         "Facet"        = $Facet
@@ -426,6 +437,9 @@ function New-IIQFacetObject {
         "Selected"     = $Selected
         "IsUnassigned" = $IsUnassigned
         "GroupIndex"   = $GroupIndex
+    }
+    if ($CustomFieldTypeId){
+        $FacetObject."CustomFieldTypeId" = $CustomFieldTypeId
     }
     return $FacetObject
 }
