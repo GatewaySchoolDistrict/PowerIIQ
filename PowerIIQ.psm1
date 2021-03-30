@@ -10,7 +10,8 @@ function Connect-IIQ {
         [Parameter(Mandatory = $true)][string]$APIToken,
         [Parameter(Mandatory = $true)][guid]$SiteID,
         [Parameter(Mandatory = $true)][string]$BaseURL,
-        [Parameter(Mandatory = $true)][guid]$ProductID
+        [Parameter(Mandatory = $true)][guid]$ProductID,
+        [switch]$NoAutocomplete
     )
     $_IIQConnectionInfo = @{
         APIToken  = $null
@@ -34,9 +35,11 @@ function Connect-IIQ {
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
-        $workflow=Get-IIQObject /workflows
-        Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
-        Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
+        if(-not $NoAutocomplete){
+            $workflow=Get-IIQObject /workflows
+            Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
+            Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
+        }
     } else {
         Disconnect-IIQ
         throw "Connect with Connect-IIQ first"
