@@ -69,10 +69,11 @@ function Invoke-IIQMethod {
         [switch]$OnlySetMappedProperties,
         $Data
     )
-
-    $DataOutput = $Data | ConvertTo-Json -Depth 10
-    $Message="Invoke-IIQMethod: Performing $Method at $Path with $DataOutput"
-    Write-Verbose $Message
+    if ($VerbosePreference -eq "Continue") {
+        $DataOutput = $Data | ConvertTo-Json -Depth 10
+        $Message = "Invoke-IIQMethod: Performing $Method at $Path with $DataOutput"
+        Write-Verbose $Message
+    }
     Invoke-IIQMethodV1 -Path $Path -Method $Method -OnlySetMappedProperties:$OnlySetMappedProperties -Data $Data
 }
 function Invoke-IIQMethodV1 {
