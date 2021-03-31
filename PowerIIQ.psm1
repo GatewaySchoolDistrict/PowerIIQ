@@ -10,46 +10,28 @@ function Connect-IIQ {
         [Parameter(Mandatory = $true)][string]$APIToken,
         [Parameter(Mandatory = $true)][guid]$SiteID,
         [Parameter(Mandatory = $true)][string]$BaseURL,
-        [Parameter(Mandatory = $true)][guid]$ProductID,
+        [guid]$ProductID,
         [switch]$NoAutocomplete
     )
     $_IIQConnectionInfo = @{
-        APIToken  = $null
-        SiteID    = $null
-        BaseURL   = $null
-        ProductID = $null
-        Status    = $null
+        APIToken  = $APIToken
+        SiteID    = $SiteID
+        BaseURL   = $BaseURL
+        ProductID = $ProductID
+        Status    = 'Connected'
         UserID    = $null
-        Lookup    = @{
-            TicketStatus    =   @{}
-            TicketAction    =   @{}
-            CustomField     =   @{}
-            CustomFieldR     =   @{}
-        }
+        Lookup    = @{}
     }
     New-Variable -Name _IIQConnectionInfo  -Value $_IIQConnectionInfo -Scope Script -Force
-    $_IIQConnectionInfo.APIToken = $APIToken
-    $_IIQConnectionInfo.SiteID = $SiteID
-    $_IIQConnectionInfo.BaseURL = $BaseURL
-    $_IIQConnectionInfo.ProductID = $ProductID
-    $_IIQConnectionInfo.Status = 'Connected'
-    $TokenRequest=@{"SiteId"=$_IIQConnectionInfo.SiteID;"UserToken"=$_IIQConnectionInfo.APIToken}
+
     $Result=Get-IIQObject -Path "/login"
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
-        if(-not $NoAutocomplete){
-            $workflow=Get-IIQObject /workflows
-            Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
-            Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
-            Get-IIQObject /custom-fields/types | ForEach-Object {
-                if ($_.App.Name){$name="$($_.App.Name):$($_.Name)"} else {$name=$_.Name}
-                $_IIQConnectionInfo.Lookup.CustomField.Add($Name,$_.CustomFieldTypeId)
-                $_IIQConnectionInfo.Lookup.CustomFieldR.Add($_.CustomFieldTypeId,$Name)
-            }
-        }
+        if(-not $ProductID){$_IIQConnectionInfo.ProductID = $Result.ProductId}
+        if(-not $NoAutocomplete){ Update-IIQAutoComplete }
     } else {
         Disconnect-IIQ
-        throw "Connect with Connect-IIQ first"
+        throw "Error Connecting to IIQ.  Check information and try again."
     }
 }
 function Disconnect-IIQ {
@@ -60,6 +42,22 @@ function Disconnect-IIQ {
         $_IIQConnectionInfo.ProductID = $null
         $_IIQConnectionInfo.Status = $null
         $_IIQConnectionInfo.UserID    = $null
+        $_IIQConnectionInfo.Lookup  = @{}
+    }
+}
+function Update-IIQAutoComplete {
+    $_IIQConnectionInfo.Lookup.TicketStatus    =   @{}
+    $_IIQConnectionInfo.Lookup.TicketAction    =   @{}
+    $_IIQConnectionInfo.Lookup.CustomField     =   @{}
+    $_IIQConnectionInfo.Lookup.CustomFieldR    =   @{}
+
+    $workflow=Get-IIQObject /workflows
+    Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
+    Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
+    Get-IIQObject /custom-fields/types | ForEach-Object {
+        if ($_.App.Name){$name="$($_.App.Name):$($_.Name)"} else {$name=$_.Name}
+        $_IIQConnectionInfo.Lookup.CustomField.Add($Name,$_.CustomFieldTypeId)
+        $_IIQConnectionInfo.Lookup.CustomFieldR.Add($_.CustomFieldTypeId,$Name)
     }
 }
 function Invoke-IIQMethod {
@@ -567,3 +565,4 @@ Export-ModuleMember -Function New-IIQFacetObject
 Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
 Export-ModuleMember -Function Update-IIQTicket
+Export-ModuleMember -Function Update-IIQAutoComplete
