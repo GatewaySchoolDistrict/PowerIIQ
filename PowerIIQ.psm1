@@ -165,7 +165,7 @@ function Get-IIQObject {
             $PercentComplete = ($CurrentPage / $RawResults.Paging.PageCount) * 100
             Write-Progress -Activity "Paging $Method Request $Path" -Status "Page $CurrentPage of $($RawResults.Paging.PageCount)" -PercentComplete $PercentComplete
             Write-Verbose $RawResults.Paging
-            if ($Path -contains '?'){$NewPath = "$Path&`$p=$CurrentPage"}else{$NewPath = "$Path`?`$p=$CurrentPage"}
+            if ($Path -Like '*`?*'){$NewPath = "$Path&`$p=$CurrentPage"}else{$NewPath = "$Path`?`$p=$CurrentPage"}
             $RawResults = Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data
             $CompiledResults += $RawResults.Items
             $CurrentPage = $RawResults.Paging.PageIndex + 1
@@ -308,24 +308,24 @@ function Get-IIQTicket {
                 "OnlyShowDeleted" = $false
                 "Filters"         = $filters
                 "FilterByProduct" = $true
-            }
-            $Path = '/tickets?$s=' + $Limit
+            }            
+                $Path = '/tickets?$s=' + $Limit
 
 
-            Get-IIQObject -Path $Path -Data $Parameters -Method POST | ForEach-Object {
+            Get-IIQObject -Path $Path -Data $Parameters -Method POST -Verbose:$VerbosePreference | ForEach-Object {
                 if ($_ -eq $null) { continue }
                 if ($Timeline -eq $true) {
-                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline") -PassThru
+                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference) -PassThru
                     #$_ | Add-Member -MemberType ScriptProperty -Name Timeline -Value {Get-IIQObject -Path "/tickets/$($this.TicketId)/timeline"} -PassThru
                 }
                 $_
             }
         }
         elseif ($PSCmdlet.ParameterSetName -eq "TicketID" ) {
-            Get-IIQObject "/tickets/$TicketID" | ForEach-Object {
+            Get-IIQObject "/tickets/$TicketID" -Verbose:$VerbosePreference | ForEach-Object {
                 if ($_ -eq $null) { continue }
                 if ($Timeline -eq $true) {
-                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline") -PassThru
+                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference) -PassThru
                     #$_ | Add-Member -MemberType ScriptProperty -Name Timeline -Value {Get-IIQObject -Path "/tickets/$($this.TicketId)/timeline"} -PassThru
                 }
                 $_
