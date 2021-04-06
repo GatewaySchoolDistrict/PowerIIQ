@@ -542,6 +542,66 @@ function Update-IIQTicket {
     }
     End {}
 }
+function New-IIQTicket{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
+
+        #Required
+        [guid]$LocationId,
+        [switch]$Sensitive,
+        [guid]$ForID,
+        [guid]$IssueID,
+        [switch]$Urgent,
+
+        #Not Required
+        [guid]$AssetId,
+        [string]$Description,
+        [string]$Subject
+
+        #[guid]$IssueCategoryID,
+        #[guid]$IssueTypeId,
+        #[guid]$TicketWizardCategoryId
+    )
+
+
+
+    $NewTicketData=@{
+
+        #Required
+        "HasSensitiveInformation"=$Sensitive.IsPresent
+        "LocationId"=$LocationID
+        "SourceId"=1
+        "ForId"=$ForID
+        "IssueId"=$IssueID
+        "IsTraining"=$false
+        "ProductId"=$_IIQConnectionInfo.ProductID
+        "IsUrgent"=$Urgent.IsPresent
+
+        #Not Required Section
+        <#
+        "TicketFollowers"=$null
+        "Locations"=$null
+        "Users"=$null
+        "Teams"=$null
+        "Roles"=$null
+        "AssetGroups"=$null
+        "Attachments"=@()
+        "LocationRoom"=$null
+        "TicketWizardCategoryId"=$TicketWizardCategoryId
+        #"Assets"=@(if ($AssetId){@{"AssetId"=$AssetId}})
+        #>
+        "IssueDescription"=$Description
+        "Subject"=$Subject
+
+        #Unknown
+        #"AssetIds"=@()
+        #"IssueCategoryId"=$IssueCategoryID
+        #"IssueTypeId"=$IssueTypeId
+    }
+    #return $NewTicketData
+    Get-IIQObject -Path /tickets/new -data $NewTicketData -Method POST
+}
 
 #Autocompleters
 class TicketStatus : System.Management.Automation.IValidateSetValuesGenerator {
@@ -567,3 +627,4 @@ Export-ModuleMember -Function Connect-IIQ
 Export-ModuleMember -Function Disconnect-IIQ
 Export-ModuleMember -Function Update-IIQTicket
 Export-ModuleMember -Function Update-IIQAutoComplete
+Export-ModuleMember -Function New-IIQTicket
