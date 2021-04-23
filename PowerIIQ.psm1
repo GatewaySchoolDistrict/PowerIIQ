@@ -356,18 +356,27 @@ function Get-IIQAsset {
         [Parameter(Mandatory = $true, ParameterSetName = "ViewID")]
         [guid]$ViewID,
         [Parameter(Mandatory = $false, ParameterSetName = "ViewID")]
-        [int]$Limit = 100
+        [int]$Limit = 100,
+        [switch]$Timeline
     )
     Begin {}
     Process {
+        $Assets=@()
         switch ($PSCmdlet.ParameterSetName) {
-            "AssetID" { Get-IIQObject "/assets/$AssetID" }
-            "AssetTag" { Get-IIQObject "/assets/assettag/$AssetTag" }
-            "SerialNumber" { Get-IIQObject "/assets/serial/$SerialNumber" }
+            "AssetID" { $Assets+=Get-IIQObject "/assets/$AssetID" }
+            "AssetTag" { $Assets+=Get-IIQObject "/assets/assettag/$AssetTag" }
+            "SerialNumber" { $Assets+=Get-IIQObject "/assets/serial/$SerialNumber" }
             "ViewID" { 
-                Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
+                $Assets+=Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
             }
             Default { throw "No Parameter set defined" }
+        }
+        if ($Timeline) {
+            foreach ($Asset in $Assets) {
+                $Asset | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/assets/$($Asset.AssetId)/activities") -PassThru
+            }
+        } else{
+            $Assets
         }
     }
     End {}
