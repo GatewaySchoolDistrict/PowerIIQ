@@ -50,10 +50,19 @@ function Update-IIQAutoComplete {
     $_IIQConnectionInfo.Lookup.TicketAction    =   @{}
     $_IIQConnectionInfo.Lookup.CustomField     =   @{}
     $_IIQConnectionInfo.Lookup.CustomFieldR    =   @{}
+    $_IIQConnectionInfo.Lookup.TicketIssue     =   @{}
 
     $workflow=Get-IIQObject /workflows
     Get-IIQObject "/tickets/$($workflow.WorkflowId)/statuses" | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketStatus.Add($_.StatusName,$_.WorkflowStepId)}
     Get-IIQObject /resolutions/actions | ForEach-Object {$_IIQConnectionInfo.Lookup.TicketAction.Add($_.Name,$_.ResolutionActionId)}
+    Get-IIQObject /issues/types | ForEach-Object {
+        if ($_IIQConnectionInfo.Lookup.TicketIssue[$_.Name] -eq $null){
+            $_IIQConnectionInfo.Lookup.TicketIssue.Add($_.Name,$_.IssueTypeId)
+        } else{
+            $Tiebreaker=$_.IssueTypeId.Substring($_.IssueTypeId.Length-4,4)
+            $_IIQConnectionInfo.Lookup.TicketIssue.Add("$($_.Name) - $Tiebreaker",$_.IssueTypeId)
+        }
+    }
     Get-IIQObject /custom-fields/types | ForEach-Object {
         if ($_.App.Name){$name="$($_.App.Name):$($_.Name)"} else {$name=$_.Name}
         $_IIQConnectionInfo.Lookup.CustomField.Add($Name,$_.CustomFieldTypeId)
@@ -545,14 +554,15 @@ function Update-IIQTicket {
 function New-IIQTicket{
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
-
         #Required
         [guid]$LocationId,
-        [switch]$Sensitive,
         [guid]$ForID,
         [guid]$IssueID,
+        [switch]$Sensitive,
         [switch]$Urgent,
+
+        [ValidateSet([TicketIssue])]
+        [string]$Issue,
 
         #Not Required
         [guid]$AssetId,
@@ -564,6 +574,24 @@ function New-IIQTicket{
         #[guid]$TicketWizardCategoryId
     )
 
+
+    if (!$ForID){
+        $ForID=$_IIQConnectionInfo.UserID
+    }
+
+    if (!$IssueID -and $Issue){
+        $IssueID = $_IIQConnectionInfo.Lookup.TicketIssue.$Issue
+    } elseif (!$IssueID -and !$Issue ){
+        throw "No Issue specified"
+    }
+    
+    if (!$LocationId){
+        $ForUser=Get-IIQUser -UserID $ForID
+        if ($ForUser.Length -ne 1){
+            throw "Location is not specified and could not find location for user"
+        }
+        $LocationId=$ForUser.Location.LocationId
+    }
 
 
     $NewTicketData=@{
@@ -612,6 +640,11 @@ class TicketStatus : System.Management.Automation.IValidateSetValuesGenerator {
 class TicketAction : System.Management.Automation.IValidateSetValuesGenerator {
     [String[]] GetValidValues() {
         return $Script:_IIQConnectionInfo.Lookup.TicketAction.keys
+    }
+}
+class TicketIssue : System.Management.Automation.IValidateSetValuesGenerator {
+    [String[]] GetValidValues() {
+        return $Script:_IIQConnectionInfo.Lookup.TicketIssue.keys
     }
 }
 
