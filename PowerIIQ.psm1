@@ -361,13 +361,13 @@ function Get-IIQAsset {
     )
     Begin {}
     Process {
-        $Assets=@()
+        $Assets=$null
         switch ($PSCmdlet.ParameterSetName) {
-            "AssetID" { $Assets+=Get-IIQObject "/assets/$AssetID" }
-            "AssetTag" { $Assets+=Get-IIQObject "/assets/assettag/$AssetTag" }
-            "SerialNumber" { $Assets+=Get-IIQObject "/assets/serial/$SerialNumber" }
+            "AssetID" { $Assets=Get-IIQObject "/assets/$AssetID" }
+            "AssetTag" { $Assets=Get-IIQObject "/assets/assettag/$AssetTag" }
+            "SerialNumber" { $Assets=Get-IIQObject "/assets/serial/$SerialNumber" }
             "ViewID" { 
-                $Assets+=Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
+                $Assets=Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
             }
             Default { throw "No Parameter set defined" }
         }
