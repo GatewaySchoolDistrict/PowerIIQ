@@ -373,7 +373,7 @@ function Get-IIQAsset {
         }
         if ($Timeline) {
             foreach ($Asset in $Assets) {
-                $Asset | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/assets/$($Asset.AssetId)/activities") -PassThru
+                $Asset | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/assets/$($Asset.AssetId)/activities" | ForEach-Object {$_.Details=ConvertFrom-Json $_.Details;$_}) -PassThru
             }
         } else{
             $Assets
