@@ -17,7 +17,8 @@ Connect-IIQ -SiteID SITEGUID -BaseURL "https://DOMAIN.incidentiq.com/api/v1.0" -
 Get-IIQAsset -ViewID ViewGUIDHERE
 Get-IIQAsset -AssetID AssetGUIDHERE
 Get-IIQAsset -SerialNumber AssetSerialHERE
-Get-IIQAsset -AssetTag AssetTagHERE
+Get-IIQAsset -AssetTag AssetTagHERE -Timeline
+Get-IIQAsset -ViewID ViewGUIDHERE  -Timeline | Where-Object {$_.Timeline.ActivityType -eq 5}
 ```
 ### Ticket examples
 ```
