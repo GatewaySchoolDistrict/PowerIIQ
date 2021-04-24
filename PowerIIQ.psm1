@@ -11,7 +11,8 @@ function Connect-IIQ {
         [Parameter(Mandatory = $true)][guid]$SiteID,
         [Parameter(Mandatory = $true)][string]$BaseURL,
         [guid]$ProductID,
-        [switch]$NoAutocomplete
+        [switch]$NoAutocomplete,
+        [switch]$Autocomplete
     )
     $_IIQConnectionInfo = @{
         APIToken  = $APIToken
@@ -28,7 +29,7 @@ function Connect-IIQ {
     if ($null -ne $Result){
         $_IIQConnectionInfo.UserID = $Result.UserID
         if(-not $ProductID){$_IIQConnectionInfo.ProductID = $Result.ProductId}
-        if(-not $NoAutocomplete){ Update-IIQAutoComplete }
+        if(-not $NoAutocomplete -and $Autocomplete){ Update-IIQAutoComplete }
     } else {
         Disconnect-IIQ
         throw "Error Connecting to IIQ.  Check information and try again."
