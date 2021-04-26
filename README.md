@@ -32,6 +32,7 @@ Get-IIQTicket -AssetTag AssetTagHERE
 Get-IIQTicket -Agent AGENTUSER -State Open
 Get-IIQTicket -UpdatedFrom '2021-03-23' -UpdatedTo 2021-03-24 -State Open
 Get-IIQTicket -TicketNumber 8621 | Update-IIQTicket -Comment "Test" -WhatIf
+Get-IIQTicket -TicketNumber 10487 | Update-IIQTicket -Action 'Provided training & support' -Status Resolved -Visible -SendEmails
 ```
 ### Other examples
 ```
