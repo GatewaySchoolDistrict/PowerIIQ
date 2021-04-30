@@ -533,7 +533,8 @@ function Update-IIQTicket {
         [ValidateSet([TicketAction])]
         [string]$Action,
         [uint]$Effort,
-        [datetime]$Date = (Get-Date)
+        [datetime]$Date = (Get-Date),
+        [guid]$Assign
     )
     Begin {
         if ($null -eq $UserId) {
@@ -584,6 +585,10 @@ function Update-IIQTicket {
         if ($null -ne $StatusID) {
             $Path = "/tickets/$TicketID/status/$StatusID"
             Get-IIQObject -Method POST -Path $Path
+        }
+
+        if ($null -ne $Assign){
+            Get-IIQObject -Method POST -Path "/tickets/$TicketID/assign" -data @{AssignToUserId=$Assign;TicketId=$TicketID}
         }
     }
     End {}
