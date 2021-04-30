@@ -345,7 +345,6 @@ function Get-IIQTicket {
     End {}
 }
 function Get-IIQAsset {
-    [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "AssetID")]
@@ -354,21 +353,33 @@ function Get-IIQAsset {
         [string]$AssetTag,
         [Parameter(Mandatory = $true, ParameterSetName = "SerialNumber")]
         [string]$SerialNumber,
-        [Parameter(Mandatory = $true, ParameterSetName = "ViewID")]
+        [Parameter(Mandatory = $false, ValueFromPipelineByPropertyName, ParameterSetName = "AssetSearch")]
+        [Alias('UserID')]
+        [guid]$OwnerID,
+        [Parameter(Mandatory = $false, ParameterSetName = "AssetSearch")]
         [guid]$ViewID,
-        [Parameter(Mandatory = $false, ParameterSetName = "ViewID")]
         [int]$Limit = 100,
-        [switch]$Timeline
+        [switch]$Timeline,
+        [Parameter(Mandatory = $false, ParameterSetName = "AssetSearch")]
+        [switch]$All
     )
     Begin {}
     Process {
         $Assets=$null
         switch ($PSCmdlet.ParameterSetName) {
-            "AssetID" { $Assets=Get-IIQObject "/assets/$AssetID" }
-            "AssetTag" { $Assets=Get-IIQObject "/assets/assettag/$AssetTag" }
-            "SerialNumber" { $Assets=Get-IIQObject "/assets/serial/$SerialNumber" }
-            "ViewID" { 
-                $Assets=Get-IIQObject -Method POST -Path "/assets/?`$s=$Limit" -Data @{"OnlyShowDeleted" = $false; "Filters" = @(@{"Facet" = "View"; "Id" = $ViewID }); "FilterByViewPermission" = $true }
+            "AssetID" { $Assets = Get-IIQObject "/assets/$AssetID" }
+            "AssetTag" { $Assets = Get-IIQObject "/assets/assettag/$AssetTag" }
+            "SerialNumber" { $Assets = Get-IIQObject "/assets/serial/$SerialNumber" }
+            "AssetSearch" {
+                $filters = @()
+                foreach ($guid in $ViewID) {
+                    $filters += New-IIQFacetObject -Facet View -Id $guid
+                }
+                foreach ($guid in $OwnerID) {
+                    $filters += New-IIQFacetObject -Facet User -Id $guid
+                }
+                if ($filters.Length -eq 0 -and $All -ne $true) { return }
+                $Assets = Get-IIQObject -Path "/assets/?`$s=$Limit" -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
             }
             Default { throw "No Parameter set defined" }
         }

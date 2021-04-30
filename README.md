@@ -19,6 +19,7 @@ Get-IIQAsset -AssetID AssetGUIDHERE
 Get-IIQAsset -SerialNumber AssetSerialHERE
 Get-IIQAsset -AssetTag AssetTagHERE -Timeline
 Get-IIQAsset -ViewID ViewGUIDHERE  -Timeline | Where-Object {$_.Timeline.ActivityType -eq 5}
+Get-IIQUser username | Get-IIQAsset
 ```
 ### Ticket examples
 ```
