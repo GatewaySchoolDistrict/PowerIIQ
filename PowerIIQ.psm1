@@ -418,14 +418,17 @@ function Get-IIQTag {
     End {}
 }
 function Get-IIQUser {
-    [cmdletbinding()]
     [CmdletBinding(DefaultParameterSetName = 'None')]
     param(
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "UserID")]
         [guid]$UserID,
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Search")]
         [string]$Search,
-        [switch]$Assets
+        [switch]$Assets,
+        [Parameter(Mandatory = $false, ParameterSetName = "UserSearch")]
+        [hashtable[]]$Facet=$null,
+        [switch]$All,
+        [uint]$Limit=100
     )
     Begin {}
     Process {
@@ -436,6 +439,12 @@ function Get-IIQUser {
                     if ($_ -eq $null) { continue }
                     Get-IIQUser -UserID $_.Id
                 }
+            }
+            "UserSearch" {
+                $filters = @()
+                if ($null -ne $Facet) { $filters += $Facet }
+                if ($filters.Length -eq 0 -and $All -ne $true) { return }
+                Get-IIQObject -Path "/users/?`$s=$Limit" -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
             }
             Default { throw "No Parameter set defined" }
         }
