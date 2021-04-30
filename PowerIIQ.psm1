@@ -424,11 +424,12 @@ function Get-IIQUser {
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline, ParameterSetName = "UserID")]
         [guid]$UserID,
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Search")]
-        [string]$Search
+        [string]$Search,
+        [switch]$Assets
     )
     Begin {}
     Process {
-        switch ($PSCmdlet.ParameterSetName) {
+        $Users = switch ($PSCmdlet.ParameterSetName) {
             "UserID" { Get-IIQObject "/users/$UserID" }
             "Search" { 
                 Get-IIQFilterItem -Facet user -Search $Search -EntityName users | ForEach-Object {
@@ -438,6 +439,12 @@ function Get-IIQUser {
             }
             Default { throw "No Parameter set defined" }
         }
+        if ($Assets) {
+            foreach ($User in $Users) {
+                $User | Add-Member -NotePropertyName "Assets" -NotePropertyValue (Get-IIQAsset -OwnerID $User.UserId)
+            }
+        }
+        return $Users
     }
     End {}
 }
