@@ -534,7 +534,8 @@ function Update-IIQTicket {
         [string]$Action,
         [uint]$Effort,
         [datetime]$Date = (Get-Date),
-        [guid]$Assign
+        [ValidateScript({$null -ne ($_ -as [guid]) -or $null -ne $_.UserId})]
+        $Assign
     )
     Begin {
         if ($null -eq $UserId) {
@@ -545,6 +546,10 @@ function Update-IIQTicket {
         }
         if ($Action -notin $null,'' -and $null -eq $ActionID) {
             $ActionID = $_IIQConnectionInfo.Lookup.TicketAction.$Action
+        }
+        if ($null -ne $Assign){
+            if ($null -ne $Assign.UserId){$Assign=$Assign.UserId}
+            if ($null -ne ($_ -as [guid])){throw "Agent assignment is invalid"}
         }
     }
     Process {
