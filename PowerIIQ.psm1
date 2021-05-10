@@ -608,6 +608,9 @@ function Update-IIQAsset {
         $OwnerId
     )
     Begin {
+        if ($PSBoundParameters.ContainsKey("OwnerId")){
+            if ($null -ne $OwnerId -and $null -eq ($OwnerId -as [guid])){throw "OwnerID assignment is invalid"}
+        }
     }
     Process {
         if ($PSBoundParameters.ContainsKey("OwnerId")){
