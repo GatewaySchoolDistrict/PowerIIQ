@@ -598,6 +598,24 @@ function Update-IIQTicket {
     }
     End {}
 }
+function Update-IIQAsset {
+    [CmdletBinding(SupportsShouldProcess = $True)]
+    #[CmdletBinding(DefaultParameterSetName = 'Comment', SupportsShouldProcess = $True)]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [guid]$AssetID,
+        [AllowNull()]
+        $OwnerId
+    )
+    Begin {
+    }
+    Process {
+        if ($PSBoundParameters.ContainsKey("OwnerId")){
+            Get-IIQObject -Method POST -Path "/assets/$AssetID/owner" -Data @{OwnerId=$OwnerId} -Verbose
+        }
+    }
+    End {}
+}
 function New-IIQTicket{
     [CmdletBinding()]
     param(
@@ -708,3 +726,4 @@ Export-ModuleMember -Function Disconnect-IIQ
 Export-ModuleMember -Function Update-IIQTicket
 Export-ModuleMember -Function Update-IIQAutoComplete
 Export-ModuleMember -Function New-IIQTicket
+Export-ModuleMember -Function Update-IIQAsset
