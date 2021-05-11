@@ -142,11 +142,12 @@ function Get-IIQObject {
         [ValidateSet("GET", "POST")]
         [string]$Method = "GET",
         [bool]$Paging = $true,
-        $data
+        [switch]$OnlySetMappedProperties,
+        $Data
     )
 
     Write-Verbose "IIQObject $Method  $Path"
-    $RawResults = Invoke-IIQMethod -Method $Method -Path $Path -Data $data
+    $RawResults = Invoke-IIQMethod -Method $Method -Path $Path -Data $Data -OnlySetMappedProperties:$OnlySetMappedProperties
     if ($null -ne $RawResults.Item -and $RawResults.Item.Length -gt 0) {
         $CompiledResults = $RawResults.Item
     }
@@ -176,7 +177,7 @@ function Get-IIQObject {
             Write-Progress -Activity "Paging $Method Request $Path" -Status "Page $CurrentPage of $($RawResults.Paging.PageCount)" -PercentComplete $PercentComplete
             Write-Verbose $RawResults.Paging
             if ($Path -Like '*`?*'){$NewPath = "$Path&`$p=$CurrentPage"}else{$NewPath = "$Path`?`$p=$CurrentPage"}
-            $RawResults = Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data
+            $RawResults = Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data -OnlySetMappedProperties:$OnlySetMappedProperties
             $CompiledResults += $RawResults.Items
             $CurrentPage = $RawResults.Paging.PageIndex + 1
             if ($cursorColumn -eq 1) { throw "Error while paging results" }
@@ -604,8 +605,26 @@ function Update-IIQAsset {
     param(
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ValueFromPipeline)]
         [guid]$AssetID,
-        [AllowNull()]
-        $OwnerId
+        [Parameter(ValueFromPipelineByPropertyName)]$OwnerId,
+        [Parameter(ValueFromPipelineByPropertyName)]$AssetTag,
+        [Parameter(ValueFromPipelineByPropertyName)]$SerialNumber,
+        [Parameter(ValueFromPipelineByPropertyName)]$ExternalID,
+        [Parameter(ValueFromPipelineByPropertyName)]$CanOwnerManage,
+        [Parameter(ValueFromPipelineByPropertyName)]$StatusTypeId,
+        [Parameter(ValueFromPipelineByPropertyName)]$Name,
+        [Parameter(ValueFromPipelineByPropertyName)]$ModelId,
+        [Parameter(ValueFromPipelineByPropertyName)]$LocationId,
+        [Parameter(ValueFromPipelineByPropertyName)]$LocationDetails,
+        [Parameter(ValueFromPipelineByPropertyName)]$Notes,
+        [Parameter(ValueFromPipelineByPropertyName)]$PurchasePoNumber,
+        [Parameter(ValueFromPipelineByPropertyName)]$WarrantyInfo,
+        [Parameter(ValueFromPipelineByPropertyName)]$Vendor,
+        [Parameter(ValueFromPipelineByPropertyName)]$InsuranceInfo,
+        [Parameter(ValueFromPipelineByPropertyName)]$StorageUnitNumber,
+        [Parameter(ValueFromPipelineByPropertyName)]$LastInventoryDate,
+        [Parameter(ValueFromPipelineByPropertyName)]$LocationRoomId,
+        [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId
+
     )
     Begin {
         if ($PSBoundParameters.ContainsKey("OwnerId")){
@@ -614,7 +633,35 @@ function Update-IIQAsset {
     }
     Process {
         if ($PSBoundParameters.ContainsKey("OwnerId")){
-            Get-IIQObject -Method POST -Path "/assets/$AssetID/owner" -Data @{OwnerId=$OwnerId} -Verbose
+            Write-Verbose "Updating Asset's Owner: $OwnerId"
+            Get-IIQObject -Method POST -Path "/assets/$AssetID/owner" -Data @{OwnerId=$OwnerId}
+        }
+        $AssetUpdates=@{}
+        $PropertiesToSync=@("CanOwnerManage","StatusTypeId","AssetTag",
+            "SerialNumber","ExternalId","Name","ModelId","LocationId",
+            "LocationDetails","Notes","PurchasePoNumber","WarrantyInfo",
+            "Vendor","InsuranceInfo","StorageUnitNumber","LastInventoryDate"
+            "LocationRoomId","FundingSourceId", "LastVerificationDateTime"
+            "StorageLocationId")
+        foreach ($Prop in $PropertiesToSync){
+            if ($PSBoundParameters.ContainsKey($Prop)){
+                $Value=Get-Variable $Prop -ValueOnly
+                if($Prop -match 'Date'){
+                    if($null -ne ($Value -as [datetime])){
+                        $Value='{0:yyyy-MM-ddTHH:mm:ss.fffZ}' -f ($Value -as [datetime])
+                    } elseif($null -eq $Value){
+                        $Value=$null
+                    } else {
+                        continue
+                    }
+                }
+                $AssetUpdates[$Prop]=$Value
+            }
+        }
+        if ($AssetUpdates.Count -gt 0){
+            Write-Verbose "Updating Asset's Properties"
+            Write-Verbose ($AssetUpdates | ConvertTo-Json -Depth 10)
+            Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties
         }
     }
     End {}
