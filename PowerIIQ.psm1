@@ -79,11 +79,6 @@ function Invoke-IIQMethod {
         [switch]$OnlySetMappedProperties,
         $Data
     )
-    if ($VerbosePreference -eq "Continue") {
-        $DataOutput = $Data | ConvertTo-Json -Depth 10
-        $Message = "Invoke-IIQMethod: Performing $Method at $Path with $DataOutput"
-        Write-Verbose $Message
-    }
     Invoke-IIQMethodV1 -Path $Path -Method $Method -OnlySetMappedProperties:$OnlySetMappedProperties -Data $Data
 }
 function Invoke-IIQMethodV1 {
@@ -142,10 +137,24 @@ function Get-IIQObject {
         [Parameter(Mandatory = $true)][string]$Path,
         [ValidateSet("GET", "POST")]
         [string]$Method = "GET",
-        [bool]$Paging = $true,
+        [switch]$NoPaging,
         [switch]$OnlySetMappedProperties,
+        [int]$PageSize=-1,
         $Data
     )
+
+    $Paging = -not $NoPaging
+    if ($PageSize -ge 0) {
+        if ($Path -match '\$s=') {
+            Write-Verbose "Page size overridden in path"    
+        }
+        elseif ($Path -match '\?') {
+            $Path = $Path + '&$s=' + $PageSize
+        }
+        else {
+            $Path = $Path + '?$s=' + $PageSize
+        }
+    }
 
     Write-Verbose "IIQObject $Method  $Path"
     $RawResults = Invoke-IIQMethod -Method $Method -Path $Path -Data $Data -OnlySetMappedProperties:$OnlySetMappedProperties
@@ -214,7 +223,7 @@ function Get-IIQTicket {
         [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
         [guid[]]$AssetID,
         [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
-        [int]$Limit = 100,
+        [int]$PageSize = 100,
         [Parameter(Mandatory = $false, ParameterSetName = "TicketSearch")]
         [ValidateSet("Open", "Closed", "All")]
         [string[]]$State,
@@ -310,8 +319,6 @@ function Get-IIQTicket {
             foreach ($item in $Facet) {
                 $filters += $item
             }
-
-
         
             if ($filters.Length -eq 0 -and $All -ne $true) { return }
             $Parameters = @{
@@ -320,11 +327,9 @@ function Get-IIQTicket {
                 "OnlyShowDeleted" = $false
                 "Filters"         = $filters
                 "FilterByProduct" = $true
-            }            
-                $Path = '/tickets?$s=' + $Limit
+            }
 
-
-            Get-IIQObject -Path $Path -Data $Parameters -Method POST -Verbose:$VerbosePreference | ForEach-Object {
+            Get-IIQObject -Path '/tickets' -Data $Parameters -Method POST -PageSize $PageSize -Verbose:$VerbosePreference | ForEach-Object {
                 if ($_ -eq $null) { continue }
                 if ($Timeline -eq $true) {
                     $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference) -PassThru
@@ -360,7 +365,7 @@ function Get-IIQAsset {
         [guid]$OwnerID,
         [Parameter(Mandatory = $false, ParameterSetName = "AssetSearch")]
         [guid]$ViewID,
-        [int]$Limit = 100,
+        [int]$PageSize = 100,
         [switch]$Timeline,
         [Parameter(Mandatory = $false, ParameterSetName = "AssetSearch")]
         [switch]$All
@@ -381,7 +386,7 @@ function Get-IIQAsset {
                     $filters += New-IIQFacetObject -Facet User -Id $guid
                 }
                 if ($filters.Length -eq 0 -and $All -ne $true) { return }
-                $Assets = Get-IIQObject -Path "/assets/?`$s=$Limit" -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
+                $Assets = Get-IIQObject -Path "/assets" -PageSize $PageSize -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
             }
             Default { throw "No Parameter set defined" }
         }
@@ -430,7 +435,7 @@ function Get-IIQUser {
         [Parameter(Mandatory = $false, ParameterSetName = "UserSearch")]
         [hashtable[]]$Facet=$null,
         [switch]$All,
-        [uint]$Limit=100
+        [uint]$PageSize=100
     )
     Begin {}
     Process {
@@ -446,7 +451,7 @@ function Get-IIQUser {
                 $filters = @()
                 if ($null -ne $Facet) { $filters += $Facet }
                 if ($filters.Length -eq 0 -and $All -ne $true) { return }
-                Get-IIQObject -Path "/users/?`$s=$Limit" -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
+                Get-IIQObject -Path "/users" -PageSize $PageSize -Method POST -Data @{"OnlyShowDeleted" = $false; "Filters" = $filters } -Verbose:$VerbosePreference
             }
             Default { throw "No Parameter set defined" }
         }
