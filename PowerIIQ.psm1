@@ -110,6 +110,7 @@ function Invoke-IIQMethodV1 {
     }
 
     if ($OnlySetMappedProperties -eq $true) {
+        Write-Verbose "Header: ApiFlags=OnlySetMappedProperties"
         $authheaders += @{"ApiFlags" = "OnlySetMappedProperties" }
     }
 
@@ -623,7 +624,8 @@ function Update-IIQAsset {
         [Parameter(ValueFromPipelineByPropertyName)]$StorageUnitNumber,
         [Parameter(ValueFromPipelineByPropertyName)]$LastInventoryDate,
         [Parameter(ValueFromPipelineByPropertyName)]$LocationRoomId,
-        [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId
+        [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId,
+        [Parameter(ValueFromPipelineByPropertyName)][switch]$Force
 
     )
     Begin {
@@ -632,9 +634,20 @@ function Update-IIQAsset {
         }
     }
     Process {
+        if (-not $Force){
+            $ReferenceAsset=Get-IIQAsset -AssetID $AssetID
+        }
+        if ($null -eq $ReferenceAsset -and -not $Force){
+            Write-Error "Update-IIQAsset: Asset $AssetID not found!"
+            return
+        }
         if ($PSBoundParameters.ContainsKey("OwnerId")){
-            Write-Verbose "Updating Asset's Owner: $OwnerId"
-            Get-IIQObject -Method POST -Path "/assets/$AssetID/owner" -Data @{OwnerId=$OwnerId}
+            if($ReferenceAsset.OwnerId -ne $OwnerID -or $Force -eq $true){
+                Write-Verbose "Updating Asset's Owner: $OwnerId"
+                Get-IIQObject -Method POST -Path "/assets/$AssetID/owner" -Data @{OwnerId=$OwnerId}
+            } else {
+                Write-Verbose "Update-IIQAsset: No owner change"
+            }
         }
         $AssetUpdates=@{}
         $PropertiesToSync=@("CanOwnerManage","StatusTypeId","AssetTag",
@@ -649,19 +662,31 @@ function Update-IIQAsset {
                 if($Prop -match 'Date'){
                     if($null -ne ($Value -as [datetime])){
                         $Value='{0:yyyy-MM-ddTHH:mm:ss.fffZ}' -f ($Value -as [datetime])
+                        if (('{0:yyyy-MM-ddTHH:mm:ss.fffZ}' -f $ReferenceAsset.$Prop) -ne $Value -or $Force){
+                            $AssetUpdates[$Prop]=$Value
+                        }
+                        continue
                     } elseif($null -eq $Value){
                         $Value=$null
                     } else {
                         continue
                     }
                 }
-                $AssetUpdates[$Prop]=$Value
+                if ($ReferenceAsset.$Prop -ne $Value -or $Force){
+                    $AssetUpdates[$Prop]=$Value
+                }
             }
         }
         if ($AssetUpdates.Count -gt 0){
+            if($null -eq $AssetUpdates["AssetTag"]){
+                #The asset tag is needed for updates so include it if it is missing from the update
+                $AssetUpdates["AssetTag"]=$ReferenceAsset.AssetTag
+            }
             Write-Verbose "Updating Asset's Properties"
             Write-Verbose ($AssetUpdates | ConvertTo-Json -Depth 10)
             Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties
+        } else {
+            Write-Verbose "Update-IIQAsset: No asset changes found"
         }
     }
     End {}
