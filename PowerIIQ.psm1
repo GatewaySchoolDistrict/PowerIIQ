@@ -434,6 +434,7 @@ function Get-IIQUser {
         [switch]$Assets,
         [Parameter(Mandatory = $false, ParameterSetName = "UserSearch")]
         [hashtable[]]$Facet=$null,
+        [Parameter(Mandatory = $false, ParameterSetName = "UserSearch")]
         [switch]$All,
         [uint]$PageSize=100
     )
