@@ -631,6 +631,8 @@ function Update-IIQAsset {
         [Parameter(ValueFromPipelineByPropertyName)]$LastInventoryDate,
         [Parameter(ValueFromPipelineByPropertyName)]$LocationRoomId,
         [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId,
+        [Parameter(ValueFromPipelineByPropertyName)]$FundingSourceId,
+        [Parameter(ValueFromPipelineByPropertyName)]$LastVerificationDateTime,
         [Parameter(ValueFromPipelineByPropertyName)][switch]$Force
 
     )
@@ -687,6 +689,10 @@ function Update-IIQAsset {
             if($null -eq $AssetUpdates["AssetTag"]){
                 #The asset tag is needed for updates so include it if it is missing from the update
                 $AssetUpdates["AssetTag"]=$ReferenceAsset.AssetTag
+            }
+            if($null -eq $AssetUpdates["SerialNumber"]){
+                #Set serial due to bug where it sometimes clears it out
+                $AssetUpdates["SerialNumber"]=$ReferenceAsset.SerialNumber
             }
             Write-Verbose "Updating Asset's Properties"
             Write-Verbose ($AssetUpdates | ConvertTo-Json -Depth 10)
