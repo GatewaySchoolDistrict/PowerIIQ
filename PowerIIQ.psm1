@@ -699,6 +699,7 @@ function Update-IIQAsset {
             Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties
         } else {
             Write-Verbose "Update-IIQAsset: No asset changes found"
+            return $ReferenceAsset
         }
     }
     End {}
