@@ -659,28 +659,24 @@ function Update-IIQAsset {
             }
         }
         if ($PSBoundParameters.ContainsKey("LinkAsset")){
+            $guids=Get-VariableArrayHelper -Data $LinkAsset -ObjectProperty AssetID -Type guid
             [array]$LinkedAssetGUIDs=
-            foreach($lasset in $LinkAsset){
-                if($lasset -as [guid] -ne $null){
-                    @{ChildAssetId=$lasset}
-                }elseif($lasset.AssetID -as [guid] -ne $null){
-                    @{ChildAssetId=$lasset.AssetID}
-                }
+            foreach($guid in $guids){
+                @{ChildAssetId=$guid}
             }
             if ($LinkedAssetGUIDs.Length -gt 0){
                 Get-IIQObject -Method POST -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
             }
         }
         if ($PSBoundParameters.ContainsKey("UnLinkAsset")){
+            $guids=Get-VariableArrayHelper -Data $UnLinkAsset -ObjectProperty AssetID -Type guid
             [array]$LinkedAssetGUIDs=
-            foreach($lasset in $UnLinkAsset){
-                if($lasset -as [guid] -ne $null){
-                    @{ChildAssetId=$lasset}
-                }elseif($lasset.AssetID -as [guid] -ne $null){
-                    @{ChildAssetId=$lasset.AssetID}
-                }
+            foreach($guid in $guids){
+                @{ChildAssetId=$guid}
             }
-            Get-IIQObject -Method DELETE -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
+            if ($LinkedAssetGUIDs.Length -gt 0){
+                Get-IIQObject -Method DELETE -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
+            }
         }
         $AssetUpdates=@{}
         $PropertiesToSync=@("CanOwnerManage","StatusTypeId","AssetTag",
@@ -806,6 +802,54 @@ function New-IIQTicket{
     }
     #return $NewTicketData
     Get-IIQObject -Path /tickets/new -data $NewTicketData -Method POST
+}
+function Get-VariableArrayHelper {
+    [CmdletBinding()]
+    param(
+        $Data,
+        [ValidateSet("guid", "int","string")]
+        [string]$Type = "string",
+        $ObjectProperty=$null
+    )
+
+    Write-Host "Lenght of" $Data.Length
+    if ($Type -eq 'guid') {
+        [array]$ReturnData=
+        foreach($item in $Data) {
+            if ($item.$ObjectProperty -ne $null -and $item.$ObjectProperty -as [guid] -ne $null) {
+                [guid]$item.$ObjectProperty
+            }elseif ($item -as [guid] -ne $null) {
+                [guid]$item
+            }elseif ($item.Length -gt 1){
+                Get-VariableArrayHelper -Type $Type -ObjectProperty $ObjectProperty -Data $item
+            }
+        }
+        return $ReturnData
+    } elseif ($Type -eq 'int') {
+        [array]$ReturnData=
+        foreach($item in $Data) {
+            if ($item.$ObjectProperty -ne $null -and $item.$ObjectProperty -as [int] -ne $null) {
+                [int]$item.$ObjectProperty
+            }elseif ($item -as [int] -ne $null) {
+                [int]$item 
+            }elseif ($item.Length -gt 1){
+                Get-VariableArrayHelper -Type $Type -ObjectProperty $ObjectProperty -Data $item
+            }
+        }
+        return $ReturnData
+    } else{
+        $ReturnData=
+        foreach($item in $Data) {
+            if ($item.$ObjectProperty -ne $null -and $item.$ObjectProperty -as [string] -ne $null) {
+                [string]$item.$ObjectProperty
+            }elseif ($item -as [string] -ne $null) {
+                [string]$item
+            }elseif ($item.Length -gt 1){
+                Get-VariableArrayHelper -Type $Type -ObjectProperty $ObjectProperty -Data $item
+            }
+        }
+        return $ReturnData
+    }
 }
 
 #Autocompleters
