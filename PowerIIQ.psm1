@@ -110,8 +110,8 @@ function Invoke-IIQMethodV1 {
     }
 
 
-    if ($Data -is [hashtable] -or $Data -is [System.Collections.Specialized.OrderedDictionary]) {
-        $json = $Data | ConvertTo-Json -Depth 10
+    if ($Data -is [hashtable] -or $Data -is [System.Collections.Specialized.OrderedDictionary] -or $Data -is [array]) {
+        $json = ConvertTo-Json -Depth 10 $Data
     }
     else {
         $json = $Data
@@ -123,7 +123,7 @@ function Invoke-IIQMethodV1 {
     Write-Verbose $Message
 
     if ($PSCmdlet.ShouldProcess($Message, $Message, 'Invoke-IIQMethodV1:')) {
-        if ($Method -in 'GET', 'DELETE') {
+        if ($Method -in 'GET') {
             Invoke-RestMethod $url -Method $Method -Headers $authheaders -ContentType "application/json" -Verbose:$false
         }
         else {
@@ -135,7 +135,7 @@ function Get-IIQObject {
     [CmdletBinding(SupportsShouldProcess)]
     param(  
         [Parameter(Mandatory = $true)][string]$Path,
-        [ValidateSet("GET", "POST")]
+        [ValidateSet("GET", "POST", "DELETE")]
         [string]$Method = "GET",
         [switch]$NoPaging,
         [switch]$OnlySetMappedProperties,
@@ -633,8 +633,9 @@ function Update-IIQAsset {
         [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId,
         [Parameter(ValueFromPipelineByPropertyName)]$FundingSourceId,
         [Parameter(ValueFromPipelineByPropertyName)]$LastVerificationDateTime,
-        [Parameter(ValueFromPipelineByPropertyName)][switch]$Force
-
+        [Parameter(ValueFromPipelineByPropertyName)][switch]$Force,
+        [array][Parameter(ValueFromPipelineByPropertyName)]$LinkAsset,
+        [array][Parameter(ValueFromPipelineByPropertyName)]$UnLinkAsset
     )
     Begin {
         if ($PSBoundParameters.ContainsKey("OwnerId")){
@@ -656,6 +657,30 @@ function Update-IIQAsset {
             } else {
                 Write-Verbose "Update-IIQAsset: No owner change"
             }
+        }
+        if ($PSBoundParameters.ContainsKey("LinkAsset")){
+            [array]$LinkedAssetGUIDs=
+            foreach($lasset in $LinkAsset){
+                if($lasset -as [guid] -ne $null){
+                    @{ChildAssetId=$lasset}
+                }elseif($lasset.AssetID -as [guid] -ne $null){
+                    @{ChildAssetId=$lasset.AssetID}
+                }
+            }
+            if ($LinkedAssetGUIDs.Length -gt 0){
+                Get-IIQObject -Method POST -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
+            }
+        }
+        if ($PSBoundParameters.ContainsKey("UnLinkAsset")){
+            [array]$LinkedAssetGUIDs=
+            foreach($lasset in $UnLinkAsset){
+                if($lasset -as [guid] -ne $null){
+                    @{ChildAssetId=$lasset}
+                }elseif($lasset.AssetID -as [guid] -ne $null){
+                    @{ChildAssetId=$lasset.AssetID}
+                }
+            }
+            Get-IIQObject -Method DELETE -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
         }
         $AssetUpdates=@{}
         $PropertiesToSync=@("CanOwnerManage","StatusTypeId","AssetTag",
@@ -695,7 +720,6 @@ function Update-IIQAsset {
                 $AssetUpdates["SerialNumber"]=$ReferenceAsset.SerialNumber
             }
             Write-Verbose "Updating Asset's Properties"
-            Write-Verbose ($AssetUpdates | ConvertTo-Json -Depth 10)
             Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties
         } else {
             Write-Verbose "Update-IIQAsset: No asset changes found"
