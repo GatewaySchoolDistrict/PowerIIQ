@@ -812,7 +812,6 @@ function Get-VariableArrayHelper {
         $ObjectProperty=$null
     )
 
-    Write-Host "Lenght of" $Data.Length
     if ($Type -eq 'guid') {
         [array]$ReturnData=
         foreach($item in $Data) {
