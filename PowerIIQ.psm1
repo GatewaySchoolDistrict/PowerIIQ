@@ -110,7 +110,7 @@ function Invoke-IIQMethodV1 {
     }
 
 
-    if ($Data -is [hashtable] -or $Data -is [System.Collections.Specialized.OrderedDictionary] -or $Data -is [array]) {
+    if ($Data -is [hashtable] -or $Data -is [System.Collections.Specialized.OrderedDictionary] -or $Data -is [array] -or $Data -is [pscustomobject]) {
         $json = ConvertTo-Json -Depth 10 $Data
     }
     else {
@@ -794,9 +794,14 @@ function New-IIQTicket{
         #>
         "IssueDescription"=$Description
         "Subject"=$Subject
-
+        "Assets"=@(
+            if ($AssetId){
+                @{"AssetId"=$AssetId}
+            }
+        )
         #Unknown
-        #"AssetIds"=@()
+        #This AssetIds does not appear to do anything.
+        #"AssetIds"=@($AssetId)
         #"IssueCategoryId"=$IssueCategoryID
         #"IssueTypeId"=$IssueTypeId
     }
