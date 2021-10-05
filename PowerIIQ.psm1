@@ -181,6 +181,7 @@ function Get-IIQObject {
         Write-Verbose "Paging required"
         Write-Verbose $RawResults.Paging
         
+        $CompiledResults
         $CurrentPage = $RawResults.Paging.PageIndex + 1
         do {
             $PercentComplete = ($CurrentPage / $RawResults.Paging.PageCount) * 100
@@ -188,12 +189,11 @@ function Get-IIQObject {
             Write-Verbose $RawResults.Paging
             if ($Path -Like '*`?*'){$NewPath = "$Path&`$p=$CurrentPage"}else{$NewPath = "$Path`?`$p=$CurrentPage"}
             $RawResults = Invoke-IIQMethod -Method $Method -Path $NewPath -Data $data -OnlySetMappedProperties:$OnlySetMappedProperties
-            $CompiledResults += $RawResults.Items
+            $RawResults.Items
             $CurrentPage = $RawResults.Paging.PageIndex + 1
             if ($cursorColumn -eq 1) { throw "Error while paging results" }
         } while ($CurrentPage -lt $RawResults.Paging.PageCount)
         Write-Progress -Activity "Paging $Method Request $Path" -Completed
-        $CompiledResults
     }
 }
 <#
