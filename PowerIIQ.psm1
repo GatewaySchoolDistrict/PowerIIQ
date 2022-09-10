@@ -284,7 +284,7 @@ function Get-IIQTicket {
             foreach ($item in $Tag) {
                 Get-IIQTag -Tag $item | ForEach-Object {
                     if ($_ -eq $null) { continue }
-                    $TagID += $_.Id
+                    $TagID += $_.TagId
                     $filters += New-IIQFacetObject -Facet tag -Id $TagID
                 }
             }
@@ -332,7 +332,7 @@ function Get-IIQTicket {
             Get-IIQObject -Path '/tickets' -Data $Parameters -Method POST -PageSize $PageSize -Verbose:$VerbosePreference | ForEach-Object {
                 if ($_ -eq $null) { continue }
                 if ($Timeline -eq $true) {
-                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference) -PassThru
+                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference)
                     #$_ | Add-Member -MemberType ScriptProperty -Name Timeline -Value {Get-IIQObject -Path "/tickets/$($this.TicketId)/timeline"} -PassThru
                 }
                 $_
@@ -342,7 +342,7 @@ function Get-IIQTicket {
             Get-IIQObject "/tickets/$TicketID" -Verbose:$VerbosePreference | ForEach-Object {
                 if ($_ -eq $null) { continue }
                 if ($Timeline -eq $true) {
-                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference) -PassThru
+                    $_ | Add-Member -NotePropertyName "Timeline" -NotePropertyValue (Get-IIQObject -Path "/tickets/$($_.TicketId)/timeline" -Verbose:$VerbosePreference)
                     #$_ | Add-Member -MemberType ScriptProperty -Name Timeline -Value {Get-IIQObject -Path "/tickets/$($this.TicketId)/timeline"} -PassThru
                 }
                 $_
@@ -633,6 +633,7 @@ function Update-IIQAsset {
         [Parameter(ValueFromPipelineByPropertyName)]$StorageLocationId,
         [Parameter(ValueFromPipelineByPropertyName)]$FundingSourceId,
         [Parameter(ValueFromPipelineByPropertyName)]$LastVerificationDateTime,
+        [switch]$OnlySetMappedProperties,
         [Parameter(ValueFromPipelineByPropertyName)][switch]$Force,
         [array][Parameter(ValueFromPipelineByPropertyName)]$LinkAsset,
         [array][Parameter(ValueFromPipelineByPropertyName)]$UnLinkAsset
@@ -678,7 +679,7 @@ function Update-IIQAsset {
                 Get-IIQObject -Method DELETE -Path "/assets/linked/to/$($ReferenceAsset.AssetID)" -Data $LinkedAssetGUIDs
             }
         }
-        $AssetUpdates=@{}
+        $AssetUpdates=$ReferenceAsset
         $PropertiesToSync=@("CanOwnerManage","StatusTypeId","AssetTag",
             "SerialNumber","ExternalId","Name","ModelId","LocationId",
             "LocationDetails","Notes","PurchasePoNumber","WarrantyInfo",
@@ -716,7 +717,7 @@ function Update-IIQAsset {
                 $AssetUpdates["SerialNumber"]=$ReferenceAsset.SerialNumber
             }
             Write-Verbose "Updating Asset's Properties"
-            Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties
+            Get-IIQObject -Method POST -Path "/assets/$AssetID" -Data $AssetUpdates -OnlySetMappedProperties:$OnlySetMappedProperties
         } else {
             Write-Verbose "Update-IIQAsset: No asset changes found"
             return $ReferenceAsset
